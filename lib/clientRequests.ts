@@ -203,7 +203,11 @@ export async function generateClientMessageWithAI(payload: {
 }
 
 export async function updateClientMessage(id: string, message: string) {
-  if (!supabase) return;
+  if (!supabase) {
+    const items = loadLocal<ClientRequest>(REQUESTS_KEY);
+    saveLocal(REQUESTS_KEY, items.map((item) => item.id === id ? { ...item, clientMessage: message } : item));
+    return;
+  }
   const { error } = await supabase.from("client_requests").update({ client_message: message }).eq("id", id);
   if (error) throw error;
 }
