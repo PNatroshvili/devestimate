@@ -45,11 +45,22 @@ Deno.serve(async (req) => {
     if (!resendApiKey) return json({ ok: false, provider: "resend", reason: "RESEND_API_KEY missing" }, 200);
     const openaiKey = Deno.env.get("OPENAI_API_KEY") || "";
     if (!openaiKey) return json({ ok: false, provider: "openai", reason: "OPENAI_API_KEY missing" }, 200);
-    const response = await fetch("https://api.openai.com/v1/models", {
-      headers: { Authorization: "Bearer " + openaiKey },
-    });
-    const detail = response.ok ? null : (await response.text()).slice(0, 1500);
-    return json({ ok: response.ok, provider: "openai", status: response.status, detail }, 200);
+    const [baseResponse, textModelResponse, imageModelResponse] = await Promise.all([
+      fetch("https://api.openai.com/v1/models", { headers: { Authorization: "Bearer " + openaiKey } }),
+      fetch("https://api.openai.com/v1/models/gpt-5.4", { headers: { Authorization: "Bearer " + openaiKey } }),
+      fetch("https://api.openai.com/v1/models/gpt-image-1.5", { headers: { Authorization: "Bearer " + openaiKey } }),
+    ]);
+    const detail = baseResponse.ok ? null : (await baseResponse.text()).slice(0, 1500);
+    const textDetail = textModelResponse.ok ? null : (await textModelResponse.text()).slice(0, 1500);
+    const imageDetail = imageModelResponse.ok ? null : (await imageModelResponse.text()).slice(0, 1500);
+    return json({
+      ok: baseResponse.ok && textModelResponse.ok && imageModelResponse.ok,
+      provider: "openai",
+      status: baseResponse.status,
+      textModel: { ok: textModelResponse.ok, status: textModelResponse.status, detail: textDetail },
+      imageModel: { ok: imageModelResponse.ok, status: imageModelResponse.status, detail: imageDetail },
+      detail,
+    }, 200);
   }
 
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
