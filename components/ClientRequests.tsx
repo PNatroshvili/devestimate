@@ -160,40 +160,145 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
         </div>
 
         <aside className="request-side">
-          {selected ? <RequestDetail request={selected} onClose={() => setSelected(null)} /> : (
-            <div className="np-side-card request-guide">
-              <Link2 className="request-guide-icon" />
-              <small>HOW IT WORKS</small>
-              <h3>Client → Form → Dashboard</h3>
-              <p>Share the generated link. The client fills in the requirements. After submission, the request appears here with the technical analysis kept on your side.</p>
-              <div className="request-steps"><span>01 Generate link</span><span>02 Client submits</span><span>03 Analyze scope</span><span>04 Price privately</span></div>
-            </div>
-          )}
+          <div className="np-side-card request-guide">
+            <Link2 className="request-guide-icon" />
+            <small>HOW IT WORKS</small>
+            <h3>Client → Form → Dashboard</h3>
+            <p>Share the generated link. The client fills in the requirements. After submission, the request appears here with the full technical review available in a dedicated popup.</p>
+            <div className="request-steps"><span>01 Generate link</span><span>02 Client submits</span><span>03 Open full request</span><span>04 Price privately</span></div>
+          </div>
         </aside>
       </div>
     </section>
   );
 }
 
-function RequestDetail({ request, onClose }: { request: ClientRequest; onClose: () => void }) {
+function RequestDetailModal({ request, onClose }: { request: ClientRequest; onClose: () => void }) {
   const analysis = request.analysis;
   const rates = loadRates();
   const price = analysis ? priceEstimate(analysis.hours, request.type, rates, 1 + (analysis.complexity - 5) * 0.04) : null;
+  const submittedAt = new Date(request.createdAt).toLocaleString("ka-GE", { dateStyle: "medium", timeStyle: "short" });
+  const flags = [
+    ["Authentication", "ავტორიზაცია და მომხმარებლები"],
+    ["Payments", "გადახდები"],
+    ["Admin panel", "ადმინისტრაციული პანელი"],
+    ["Notifications", "შეტყობინებები"],
+    ["External API", "გარე API / ინტეგრაციები"],
+    ["SEO / Analytics", "SEO / ანალიტიკა"],
+  ];
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
 
   return (
-    <div className="np-side-card request-detail">
-      <div className="request-detail-head"><div><small>INTERNAL REVIEW</small><h3>{request.projectName}</h3></div><button className="icon-button" onClick={onClose}><X /></button></div>
-      <div className="request-detail-contact"><strong>{request.clientName}</strong><span>{request.company || "No company"}</span><span>{request.email}</span></div>
-      <div className="request-detail-block"><span>Recommended stack</span>{analysis?.stack.map((item, index) => <b key={item}><i>{String(index + 1).padStart(2, "0")}</i>{item}</b>)}</div>
-      <div className="request-detail-metrics">
-        <div><span>Hours</span><strong>{analysis?.hours || "—"}h</strong></div>
-        <div><span>Complexity</span><strong>{analysis?.complexity || "—"}/10</strong></div>
-        <div><span>Internal estimate</span><strong>{price ? "$" + Math.round(price.final).toLocaleString() : "—"}</strong></div>
-        <div><span>Requested budget</span><strong>{request.budget ? Number(request.budget).toLocaleString("ka-GE") : "—"}</strong></div>
+    <div className="request-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="request-modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+        <header className="request-modal-head">
+          <div>
+            <small>სრული მოთხოვნა • INTERNAL REVIEW</small>
+            <h2 id="request-modal-title">{request.projectName}</h2>
+            <div className="request-modal-meta">
+              <span>{request.status}</span>
+              <span>{request.type}</span>
+              <span>{submittedAt}</span>
+            </div>
+          </div>
+          <button className="icon-button request-modal-close" onClick={onClose} aria-label="Close request"><X /></button>
+        </header>
+
+        <div className="request-modal-body">
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>01</span><div><h3>კლიენტის ინფორმაცია</h3><p>ფორმაში მითითებული საკონტაქტო დეტალები</p></div></div>
+            <div className="request-modal-grid">
+              <Info label="სახელი და გვარი" value={request.clientName} />
+              <Info label="კომპანია / ორგანიზაცია" value={request.company || "არ არის მითითებული"} />
+              <Info label="ელფოსტა" value={request.email || "არ არის მითითებული"} />
+              <Info label="ტელეფონი" value={request.phone || "არ არის მითითებული"} />
+            </div>
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>02</span><div><h3>პროექტის ძირითადი ინფორმაცია</h3><p>ზუსტად ის მნიშვნელობები, რომლებიც კლიენტმა ფორმაში შეავსო</p></div></div>
+            <div className="request-modal-grid">
+              <Info label="პროექტის სახელი" value={request.projectName} />
+              <Info label="პროექტის ტიპი" value={request.type} />
+              <Info label="სასურველი დასრულების ვადა" value={request.deadline || "არ არის მითითებული"} />
+              <Info label="სასურველი ბიუჯეტი" value={request.budget || "არ არის მითითებული"} emphasis />
+            </div>
+            <div className="request-modal-field request-modal-wide"><span>პროექტის სრული აღწერა</span><p>{request.description || "არ არის მითითებული"}</p></div>
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>03</span><div><h3>ფუნქციები</h3><p>მომხმარებლის მიერ მითითებული ყველა ფუნქცია, უცვლელად</p></div></div>
+            {request.features.length ? (
+              <div className="request-feature-list">{request.features.map((feature, index) => <div key={feature + index}><i>{String(index + 1).padStart(2, "0")}</i><span>{feature}</span></div>)}</div>
+            ) : <EmptyValue text="კლიენტს ფუნქციები არ მიუთითებია." />}
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>04</span><div><h3>მოთხოვნები და ჩექბოქსები</h3><p>ყველა ვარიანტი ჩანს — მონიშნული და მოუნიშნავი</p></div></div>
+            <div className="request-flag-grid">
+              {flags.map(([value, label]) => {
+                const checked = request.flags.includes(value);
+                return (
+                  <div key={value} className={"request-flag-item " + (checked ? "checked" : "")}>
+                    <span className="request-flag-box">{checked ? "✓" : ""}</span>
+                    <div><strong>{label}</strong><small>{checked ? "მონიშნულია" : "არ არის მონიშნული"}</small></div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>05</span><div><h3>ვადები, ბიუჯეტი და დამატებითი ინფორმაცია</h3><p>ფორმის ბოლო ნაწილის ყველა ველი</p></div></div>
+            <div className="request-modal-grid">
+              <Info label="სასურველი დასრულების ვადა" value={request.deadline || "არ არის მითითებული"} />
+              <Info label="სასურველი ბიუჯეტი" value={request.budget || "არ არის მითითებული"} emphasis />
+            </div>
+            <div className="request-modal-field request-modal-wide"><span>დამატებითი შენიშვნები</span><p>{request.notes || "კლიენტს დამატებითი ინფორმაცია არ მიუთითებია."}</p></div>
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>06</span><div><h3>AI ანალიზი</h3><p>შიდა ტექნიკური შეფასება — კლიენტი ამას ვერ ხედავს</p></div></div>
+            <div className="request-analysis-summary">
+              <div><span>შეფასების საათები</span><strong>{analysis?.hours || "—"} სთ</strong></div>
+              <div><span>სირთულე</span><strong>{analysis?.complexity || "—"}/10</strong></div>
+              <div><span>შიდა ფასი</span><strong>{price ? "$" + Math.round(price.final).toLocaleString() : "—"}</strong></div>
+              <div><span>კლიენტის ბიუჯეტი</span><strong>{request.budget || "—"}</strong></div>
+            </div>
+            {analysis?.summary && <div className="request-modal-field request-modal-wide"><span>AI-ის შეჯამება</span><p>{analysis.summary}</p></div>}
+            {analysis?.rationale && <div className="request-modal-field request-modal-wide"><span>ტექნოლოგიური არჩევანის დასაბუთება</span><p>{analysis.rationale}</p></div>}
+            <div className="request-ai-columns">
+              <div className="request-modal-field"><span>რეკომენდებული ტექნოლოგიები</span>{analysis?.stack?.length ? <ul>{analysis.stack.map((item) => <li key={item}>{item}</li>)}</ul> : <EmptyValue text="ანალიზი ჯერ არ არის." />}</div>
+              <div className="request-modal-field"><span>დასაზუსტებელი საკითხები</span>{analysis?.missing?.length ? <ul>{analysis.missing.map((item) => <li key={item}>{item}</li>)}</ul> : <EmptyValue text="დამატებითი კითხვები არ არის." />}</div>
+            </div>
+            {analysis?.groups?.length ? <div className="request-modal-field request-modal-wide"><span>სამუშაოს ჯგუფები</span><div className="request-groups">{analysis.groups.map((group) => <div key={group.name}><strong>{group.name}</strong><span>{group.count} კომპონენტი • {group.hours} სთ</span></div>)}</div></div> : null}
+          </section>
+        </div>
+
+        <footer className="request-modal-foot">
+          <div><span>Request ID</span><code>{request.id}</code></div>
+          <button className="secondary" onClick={onClose}>დახურვა</button>
+        </footer>
       </div>
-      <div className="request-detail-block"><span>Open questions</span>{analysis?.missing.slice(0, 5).map((item) => <small key={item}>{item}</small>)}</div>
-      <div className="request-detail-block"><span>Client brief</span><p>{request.description}</p></div>
-      <button className="secondary request-open-project" onClick={onClose}>Close review</button>
     </div>
   );
 }
+
+function Info({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
+  return <div className={"request-info " + (emphasis ? "emphasis" : "")}><span>{label}</span><strong>{value}</strong></div>;
+}
+
+function EmptyValue({ text }: { text: string }) {
+  return <div className="request-empty-value">{text}</div>;
+}
+function RequestDetailPlaceholder() { return null; }
