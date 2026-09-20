@@ -93,6 +93,17 @@ async function generateImage(prompt: string) {
     }
 
     const detail = await response.text();
+    let parsed: any = null;
+    try { parsed = JSON.parse(detail); } catch {}
+    const providerCode = parsed?.error?.code || "";
+    const providerType = parsed?.error?.type || "";
+
+    if (response.status === 429 && (providerCode === "credit_balance_exhausted" || providerType === "insufficient_quota")) {
+      const quotaError = new Error("OPENAI_QUOTA_EXHAUSTED");
+      (quotaError as Error & { code?: string }).code = "OPENAI_QUOTA_EXHAUSTED";
+      throw quotaError;
+    }
+
     lastError = "OpenAI image API " + response.status + ": " + detail.slice(0, 1800);
 
     if (response.status !== 429 && response.status < 500) break;
@@ -206,7 +217,11 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, mockups: generated });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Mockup generation failed.";
+    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code || "") : "";
+    const message = code === "OPENAI_QUOTA_EXHAUSTED"
+      ? "OpenAI API credits are exhausted. Add credits to the OpenAI billing account and retry mockup generation."
+      : (error instanceof Error ? error.message : "Mockup generation failed.");
+
     await admin
       .from("client_requests")
       .update({ mockups_status: "error", mockups_error: message.slice(0, 2500) })
@@ -214,6 +229,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: false,
+      code: code || "MOCKUP_GENERATION_FAILED",
       error: message,
     }, 200);
   }
