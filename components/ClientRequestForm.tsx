@@ -4,7 +4,7 @@ import { Check, ChevronRight, Layers3, Send, ShieldCheck, Smartphone, Store, Glo
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { analyzeClientRequest, type ClientProjectType } from "../lib/requestAnalysis";
-import { submitClientRequest } from "../lib/clientRequests";
+import { analyzeClientRequestWithAI, submitClientRequest } from "../lib/clientRequests";
 
 const types: { id: ClientProjectType; title: string; description: string; icon: typeof Globe }[] = [
   { id: "Web", title: "Web application", description: "SaaS, website, portal, platform", icon: Globe },
@@ -63,7 +63,19 @@ export default function ClientRequestForm() {
 
     setLoading(true);
     try {
-      const analysis = analyzeClientRequest(type, description, features, flags);
+      const heuristicAnalysis = analyzeClientRequest(type, description, features, flags);
+      const aiAnalysis = await analyzeClientRequestWithAI({
+        projectName: projectName.trim(),
+        type,
+        description: description.trim(),
+        features,
+        flags,
+        deadline,
+        notes: notes.trim(),
+      });
+      const analysis = aiAnalysis
+        ? { ...aiAnalysis, source: "ai" as const }
+        : { ...heuristicAnalysis, source: "rules" as const };
       await submitClientRequest(token, {
         projectName: projectName.trim(),
         clientName: clientName.trim(),
