@@ -1914,3 +1914,127 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
     grid-template-columns:1fr;
   }
 }
+
+/* Final dashboard sizing — match approved Google-style mockup at normal desktop scale */
+.dashboard-target-page{
+  max-width:none;
+  width:100%;
+  min-width:0;
+  padding:0 30px 42px;
+  background:#f8fafc;
+}
+.dashboard-sidebar{
+  width:178px;
+  min-width:178px;
+  padding:18px 10px 12px;
+}
+.dashboard-brand{padding:0 9px 22px;gap:8px}
+.dashboard-brand img{width:27px!important;height:27px!important;border-radius:7px}
+.dashboard-brand strong{font-size:12px}
+.dashboard-brand small{font-size:7px}
+.dashboard-nav a,.dashboard-sidebar-bottom>a{
+  min-height:36px!important;
+  padding:0 10px!important;
+  border-radius:8px!important;
+  gap:9px!important;
+  font-size:10px!important;
+}
+.dashboard-nav a svg,.dashboard-sidebar-bottom>a svg{
+  width:15px!important;height:15px!important;
+}
+.dashboard-target-page .target-topbar{
+  height:64px;
+  gap:9px;
+}
+.target-search{
+  width:310px;
+  height:36px;
+  border-radius:9px;
+  gap:8px;
+  padding:0 11px;
+}
+.target-search svg{width:15px}
+.target-search input{font-size:10px}
+.target-period,.target-chart-period{
+  height:36px;
+  border-radius:9px;
+  gap:6px;
+  padding:0 11px;
+  font-size:9px;
+}
+.target-period svg,.target-chart-period svg{width:12px}
+.target-bell{width:34px;height:34px}
+.target-bell svg{width:17px}
+.target-avatar{width:30px;height:30px;font-size:10px}
+.target-heading{padding:28px 0 20px}
+.target-heading>div>small{font-size:8px}
+.target-heading h1{
+  margin:6px 0 5px;
+  font-size:27px;
+}
+.target-heading p{font-size:11px}
+.target-heading-period{height:34px}
+.target-kpis{gap:11px;margin-bottom:14px}
+.target-kpi{
+  min-height:106px;
+  padding:17px 18px;
+  border-radius:10px;
+}
+.target-kpi span{font-size:8px}
+.target-kpi strong{margin-top:8px;font-size:25px}
+.target-kpi small{margin-top:7px;font-size:8px}
+.target-card{border-radius:10px}
+.target-chart-card{
+  padding:18px 19px 14px;
+  margin-bottom:14px;
+}
+.target-card-head h2{font-size:13px;margin-bottom:5px}
+.target-card-head p{font-size:8px}
+.target-chart-period{height:30px;font-size:8px}
+.target-chart{height:270px;margin-top:10px}
+.target-y{width:34px;padding:2px 0 22px;font-size:8px}
+.target-plot{padding-bottom:22px}
+.target-gridline.g1{top:1%}
+.target-gridline.g2{top:34%}
+.target-gridline.g3{top:67%}
+.target-gridline.g4{top:99%}
+.target-bars{left:10px;right:10px;bottom:22px;gap:4px}
+.target-bar-wrap{max-width:12px}
+.target-axis{font-size:8px}
+.target-recent-card{padding:18px 19px 7px}
+.target-table{margin-top:10px}
+.target-table-head,.target-table-row{
+  grid-template-columns:1.7fr 1.15fr .85fr .85fr .75fr;
+  gap:14px;
+}
+.target-table-head{
+  min-height:30px;
+  font-size:8px;
+}
+.target-table-row{
+  min-height:48px;
+  font-size:9px;
+}
+.target-table-row strong{font-size:10px}
+.dashboard-target-page .dashboard-status{
+  min-height:21px;
+  padding:0 8px;
+  border-radius:7px;
+  font-size:7px;
+}
+@media(min-width:1500px){
+  .dashboard-target-page{padding-left:32px;padding-right:32px}
+  .dashboard-sidebar{width:190px;min-width:190px}
+}
+@media(max-width:1100px){
+  .dashboard-target-page{padding-left:20px;padding-right:20px}
+  .target-search{width:250px}
+}
+@media(max-width:680px){
+  .dashboard-sidebar{width:0;min-width:0}
+  .dashboard-target-page{padding:0 14px 26px}
+  .target-heading{padding-top:20px}
+  .target-heading h1{font-size:23px}
+  .target-kpis{grid-template-columns:1fr 1fr}
+  .target-chart{height:220px}
+}
