@@ -242,7 +242,22 @@ export async function submitClientRequest(token: string, payload: ClientRequestI
     p_payload: payload,
   });
   if (error) throw error;
-  return data as string;
+
+  const requestId = String(data);
+  const { error: emailError } = await supabase.functions.invoke("send-request-email", {
+    body: {
+      requestId,
+      requestToken: token,
+    },
+  });
+
+  // Email is a notification side-effect: the request itself is already saved.
+  // Do not make the client resubmit a successful request just because notification delivery failed.
+  if (emailError) {
+    console.error("Request notification email failed:", emailError);
+  }
+
+  return requestId;
 }
 
 export async function signRequestMockupUrls(mockups: RequestMockup[]) {
