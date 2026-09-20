@@ -2088,3 +2088,39 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
   white-space:pre-wrap;
   word-break:break-word;
 }
+
+
+.request-mockup-error{
+  margin:0 0 12px;
+  padding:12px 13px;
+  border:1px solid #f0c6c6;
+  border-radius:10px;
+  background:#fff7f7;
+  color:#8f4545;
+}
+.request-mockup-error strong,
+.request-mockup-error span{
+  display:block;
+}
+.request-mockup-error strong{
+  font-size:9px;
+  margin-bottom:4px;
+}
+.request-mockup-error span{
+  font-size:8px;
+  line-height:1.55;
+}
+.request-mockup-error a{
+  display:inline-block;
+  margin-top:8px;
+  color:#2f73df;
+  font-size:8px;
+  font-weight:600;
+  text-decoration:none;
+}
+.request-mockup-error a:hover{text-decoration:underline}
+.request-mockup-error.quota{
+  border-color:#eed0b1;
+  background:#fffaf4;
+  color:#8a5a2d;
+}
