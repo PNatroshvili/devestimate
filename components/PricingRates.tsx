@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Check, CircleDollarSign, Save, RotateCcw, Info } from "lucide-react";
 import { useState } from "react";
+import { DEFAULT_RATES, PricingRates as PricingRatesType } from "../lib/pricing";
 
 type Rates = {
   web: number; mobile: number; wordpress: number; hybrid: number;
@@ -9,7 +10,7 @@ type Rates = {
   complexity: number; urgency: number; vat: number; discount: number;
 };
 
-const defaults: Rates = {
+const defaults: Rates = DEFAULT_RATES;
   web: 45, mobile: 50, wordpress: 35, hybrid: 55,
   design: 40, maintenance: 20, minimum: 500,
   complexity: 1, urgency: 1.2, vat: 0, discount: 0,
@@ -22,7 +23,7 @@ export default function PricingRates({ onBack }: { onBack: () => void }) {
     setSaved(false);
     setRates(r => ({ ...r, [key]: Number(value) || 0 }));
   };
-  const reset = () => { setRates(defaults); setSaved(false); };
+  const reset = () => { setRates(defaults); window.localStorage.setItem("devestimate-pricing-rates", JSON.stringify(defaults)); setSaved(false); };
   const sampleHours = 80;
   const beforeAdjustments = sampleHours * rates.web;
   const adjusted = beforeAdjustments * rates.complexity * rates.urgency;
@@ -66,7 +67,7 @@ export default function PricingRates({ onBack }: { onBack: () => void }) {
         </div>
         <div className="rates-actions">
           <button className="secondary" onClick={reset}><RotateCcw /> Reset defaults</button>
-          <button className="primary" onClick={() => setSaved(true)}><Save /> Save pricing rules</button>
+          <button className="primary" onClick={() => { window.localStorage.setItem("devestimate-pricing-rates", JSON.stringify(rates)); setSaved(true); }}><Save /> Save pricing rules</button>
         </div>
       </div>
       <aside className="rates-side">
