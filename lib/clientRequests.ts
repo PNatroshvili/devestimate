@@ -38,6 +38,8 @@ export type ClientRequest = {
   notes: string;
   analysis?: RequestAnalysis;
   mockups?: RequestMockup[];
+  mockupStatus?: "idle" | "generating" | "ready" | "error";
+  mockupError?: string;
   clientMessage?: string;
   status: "New" | "Reviewed" | "Converted" | "Archived";
   createdAt: string;
@@ -101,6 +103,8 @@ const mapRequest = (row: any): ClientRequest => ({
   notes: row.notes || "",
   analysis: row.analysis || undefined,
   mockups: Array.isArray(row.mockups) ? row.mockups : [],
+  mockupStatus: row.mockups_status || "idle",
+  mockupError: row.mockups_error || undefined,
   clientMessage: row.client_message || undefined,
   status: row.status || "New",
   createdAt: row.created_at,
@@ -170,35 +174,82 @@ export async function analyzeClientRequestWithAI(payload: {
 }) {
   if (!supabase) return null;
   const { data, error } = await supabase.functions.invoke("analyze-request", { body: payload });
-  if (error || !data?.analysis) return null;
-  return data.analysis as RequestAnalysis;
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(String(data?.detail || data?.error || "AI analysis failed"));
+  return (data?.analysis || null) as RequestAnalysis | null;
 }
 
-export async function signRequestMockupUrls(mockups: RequestMockup[]) {
-  const client = supabase;
-  if (!client || !mockups.length) return mockups;
-  const signed = await Promise.all(
-    mockups.map(async (item) => {
-      try {
-        const { data } = await client
-          .storage
-          .from("request-mockups")
-          .createSignedUrl(item.path, 60 * 60 * 24);
-        return { ...item, url: data?.signedUrl || undefined };
-      } catch {
-        return item;
-      }
-    }),
-  );
-  return signed;
+export async function updateClientRequestAnalysis(id: string, analysis: RequestAnalysis) {
+  if (!supabase) {
+    const items = loadLocal<ClientRequest>(REQUESTS_KEY);
+    saveLocal(
+      REQUESTS_KEY,
+      items.map((item) => item.id === id ? { ...item, analysis } : item),
+    );
+    return;
+  }
+  const { error } = await supabase
+    .from("client_requests")
+    .update({ analysis })
+    .eq("id", id);
+  if (error) throw error;
 }
 
-export async function generateRequestMockupsWithAI(requestId: string) {
+export async function generateClientMessageWithAI(payload: Record<string, unknown>) {
+  if (!supabase) return "";
+  const { data, error } = await supabase.functions.invoke("generate-client-message", { body: payload });
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(String(data?.detail || data?.error || "Client message generation failed"));
+  return String(data?.message || "");
+}
+
+export async function updateClientMessage(id: string, message: string) {
+  if (!supabase) {
+    const items = loadLocal<ClientRequest>(REQUESTS_KEY);
+    saveLocal(REQUESTS_KEY, items.map((item) => item.id === id ? { ...item, clientMessage: message } : item));
+    return;
+  }
+  const { error } = await supabase.from("client_requests").update({ client_message: message }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function submitClientRequest(token: string, payload: ClientRequestInput) {
+  if (!supabase) {
+    const link = loadLocal<ClientRequestLink>(LINKS_KEY).find((item) => item.token === token && item.active);
+    if (!link) throw new Error("This request link is invalid or inactive.");
+
+    const request: ClientRequest = {
+      id: "local-" + makeToken(),
+      requestLinkId: link.id,
+      requestToken: token,
+      ...payload,
+      status: "New",
+      createdAt: new Date().toISOString(),
+    };
+
+    saveLocal(REQUESTS_KEY, [request, ...loadLocal<ClientRequest>(REQUESTS_KEY)]);
+    saveLocal(
+      LINKS_KEY,
+      loadLocal<ClientRequestLink>(LINKS_KEY).map((item) =>
+        item.id === link.id ? { ...item, submittedCount: item.submittedCount + 1 } : item,
+      ),
+    );
+    return request;
+  }
+
+  const { data, error } = await supabase.rpc("submit_client_request", {
+    p_token: token,
+    p_payload: payload,
+  });
+  if (error) throw error;
+  return data as string;
+}export async function generateRequestMockupsWithAI(requestId: string) {
   if (!supabase) return [];
   const { data, error } = await supabase.functions.invoke("generate-request-mockups", {
     body: { requestId },
   });
   if (error) throw error;
+  if (data?.ok === false) throw new Error(String(data?.error || "Mockup generation failed"));
   const mockups = (data?.mockups || []) as RequestMockup[];
   return signRequestMockupUrls(mockups);
 }
@@ -219,27 +270,12 @@ export async function updateClientRequestAnalysis(id: string, analysis: RequestA
   if (error) throw error;
 }
 
-export async function generateClientMessageWithAI(payload: {
-  clientName: string;
-  company: string;
-  projectName: string;
-  type: ClientProjectType;
-  description: string;
-  features: string[];
-  flags: string[];
-  deadline: string;
-  requestedBudget: string;
-  requestedBudgetCurrency: "GEL" | "USD" | "EUR";
-  estimatedHours: number;
-  estimatedPrice: string;
-  stack: string[];
-  openQuestions: string[];
-  groups: { name: string; count: number; hours: number }[];
-}) {
-  if (!supabase) return null;
+export async function generateClientMessageWithAI(payload: Record<string, unknown>) {
+  if (!supabase) return "";
   const { data, error } = await supabase.functions.invoke("generate-client-message", { body: payload });
-  if (error || !data?.message) return null;
-  return String(data.message);
+  if (error) throw error;
+  if (data?.ok === false) throw new Error(String(data?.detail || data?.error || "Client message generation failed"));
+  return String(data?.message || "");
 }
 
 export async function updateClientMessage(id: string, message: string) {
