@@ -51,8 +51,11 @@ export default function Dashboard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestId = params.get("requestId");
-    if (requestId) {
-      setRequestIdFromUrl(requestId);
+    const routeMatch = window.location.pathname.match(/^\/requests\/([^/]+)\/?$/);
+    const routeRequestId = routeMatch ? decodeURIComponent(routeMatch[1]) : null;
+    const targetRequestId = routeRequestId || requestId;
+    if (targetRequestId) {
+      setRequestIdFromUrl(targetRequestId);
       setPage("requests");
     }
   }, []);
@@ -76,8 +79,7 @@ export default function Dashboard() {
   };
 
   const openRequest = (requestId: string) => {
-    setRequestIdFromUrl(requestId);
-    setPage("requests");
+    window.location.href = "/requests/" + encodeURIComponent(requestId);
   };
 
   if (isSupabaseConfigured && authLoading) {
@@ -94,7 +96,14 @@ export default function Dashboard() {
     if (page === "projects") return <Projects onBack={() => setPage("dashboard")} onNew={() => setPage("new")} onOpen={openProject} />;
     if (page === "templates") return <Templates onBack={() => setPage("dashboard")} onNew={() => setPage("new")} />;
     if (page === "analytics") return <Analytics onBack={() => setPage("dashboard")} />;
-    if (page === "requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} onBack={() => setPage("dashboard")} />;
+    if (page === "requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} standalone={Boolean(requestIdFromUrl && window.location.pathname.startsWith("/requests/"))} onBack={() => {
+      if (window.location.pathname.startsWith("/requests/")) {
+        window.location.href = "/";
+      } else {
+        setRequestIdFromUrl(null);
+        setPage("requests");
+      }
+    }} />;
     if (page === "detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={() => setPage("projects")} />;
 
     return (
