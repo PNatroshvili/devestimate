@@ -230,7 +230,7 @@ function Review({ label, value }: { label: string; value: string }) {
   return <div className="review-row"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function AnalysisScreen({ name, client, type, analysis, flags, onBack }: {
+function AnalysisScreen({ name, client, type, analysis, flags, rates, onBack }: {
   name: string; client: string; type: ProjectType; analysis: ReturnType<typeof buildAnalysis>; flags: string[]; rates: PricingRates; onBack: () => void;
 }) {
   const [tab, setTab] = useState<"overview" | "questions">("overview");
