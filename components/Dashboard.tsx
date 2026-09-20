@@ -99,6 +99,7 @@ export default function Dashboard() {
         onRates={() => setPage("rates")}
         onAnalytics={() => setPage("analytics")}
         onRequests={() => setPage("requests")}
+        onOpenRequest={openRequest}
       />
     );
   };
