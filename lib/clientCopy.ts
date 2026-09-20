@@ -4,7 +4,7 @@ export const CLIENT_COPY = {
   ka: {
     request: "პროექტის მოთხოვნა",
     secure: "დაცული ფორმა",
-    heroTitle: "მოგვიყევით, რას გეგმავთ შექმნას.",
+    heroTitle: "პროექტის შესახებ",
     heroText: "შეავსეთ ფორმა რაც შეიძლება დეტალურად. თქვენი პასუხები დაგვეხმარება ზუსტად გავიგოთ პროექტის მიზანი, მასშტაბი და ტექნიკური საჭიროებები.",
     noPrice: "ამ ფორმაში პროექტის ფასი და შიდა შეფასება არ გამოჩნდება.",
     about: "თქვენ შესახებ",
@@ -67,7 +67,7 @@ export const CLIENT_COPY = {
   en: {
     request: "Project request",
     secure: "Secure form",
-    heroTitle: "პროექტის შესახებ",
+    heroTitle: "About the project",
     heroText: "Please complete the form with as much detail as possible. Your answers help us understand the project's goals, scope and technical needs.",
     noPrice: "This form does not show project pricing or internal estimates.",
     about: "About you",
