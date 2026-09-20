@@ -24,6 +24,7 @@ type MockupSpec = {
   tableColumns: string[];
   formFields: string[];
   theme: "light" | "dark" | "neutral" | string;
+  visualAssets?: { label:string; kind?:string; url?:string }[];
 };
 
 function json(body: unknown, status = 200) {
@@ -55,6 +56,19 @@ function tx(x:number,y:number,v:unknown,size=14,weight=400,fill="#172033",anchor
 }
 function box(x:number,y:number,w:number,h:number,fill:string,stroke="none",r=10) {
   return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+r+'" fill="'+fill+'" stroke="'+stroke+'"/>';
+}
+function visualAsset(x:number,y:number,w:number,h:number,asset:any,c:any){
+  if(asset?.url){
+    return '<image href="'+esc(asset.url)+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" preserveAspectRatio="xMidYMid slice"/>';
+  }
+  const label=truncate(asset?.label||"Product visual",24);
+  const kind=String(asset?.kind||"product");
+  const accent=kind==="banner"?"#DDEBFF":kind==="avatar"?"#E8E5FF":"#F2F4F7";
+  let out=box(x,y,w,h,accent,"none",12);
+  out+=box(x+w*.18,y+h*.18,w*.64,h*.48,"#FFFFFF","none",10);
+  out+='<circle cx="'+(x+w*.5)+'" cy="'+(y+h*.42)+'" r="'+Math.min(w,h)*.09+'" fill="'+c.accent+'" opacity=".9"/>';
+  out+=tx(x+w*.5,y+h*.83,label,10,650,c.text,"middle");
+  return out;
 }
 
 function renderSvg(spec: MockupSpec, request:any) {
@@ -107,13 +121,18 @@ function renderSvg(spec: MockupSpec, request:any) {
     const leftW=mobile?cw:cw*.62;
     s+=box(x0,top,leftW,420,c.panel,c.border);
     s+=tx(x0+18,top+32,(spec.widgets||[])[0]||"Main workflow",15,700,c.text);
+    const assets=(spec.visualAssets||[]).slice(0,3);
+    if(assets.length){
+      const ag=12, aw=(leftW-36-ag*Math.max(0,assets.length-1))/assets.length;
+      assets.forEach((asset,i)=>s+=visualAsset(x0+18+i*(aw+ag),top+50,aw,132,asset,c));
+    }
     (spec.widgets||["Primary workflow","Recent activity","Key information"]).slice(0,4).forEach((item,i)=>{
-      const y=top+68+i*72;
-      s+=box(x0+18,y,leftW-36,54,c.bg,"none",8);
-      s+=box(x0+30,y+13,42,28,c.soft,"none",14);
-      s+=tx(x0+51,y+32,String(i+1).padStart(2,"0"),11,650,c.accent,"middle");
-      s+=tx(x0+92,y+27,item,12,650,c.text);
-      s+=tx(x0+92,y+45,"Configured from project requirements",10,400,c.muted);
+      const y=top+198+i*54;
+      s+=box(x0+18,y,leftW-36,42,c.bg,"none",8);
+      s+=box(x0+30,y+9,34,24,c.soft,"none",12);
+      s+=tx(x0+47,y+26,String(i+1).padStart(2,"0"),10,650,c.accent,"middle");
+      s+=tx(x0+78,y+20,item,11,650,c.text);
+      s+=tx(x0+78,y+35,"Mapped from project requirements",9,400,c.muted);
     });
     if(!mobile){
       const rx=x0+leftW+16,rw=cw-leftW-16;
@@ -169,6 +188,11 @@ function fallbackMockupSpecs(request:any): MockupSpec[] {
   const common=(slot:MockupSpec["slot"],title:string,subtitle:string):MockupSpec=>({
     slot,title,subtitle,nav,primaryAction:primary,stats,widgets,tableColumns:columns,formFields:forms,
     theme:slot==="mobile"?"light":"neutral",
+    visualAssets:[
+      {label:"Product catalog",kind:"product"},
+      {label:"Promotion banner",kind:"banner"},
+      {label:"Customer profile",kind:"avatar"},
+    ],
   });
   return [
     common("overview",project+" overview","Project dashboard generated from the submitted brief."),
