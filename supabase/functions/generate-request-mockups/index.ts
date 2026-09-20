@@ -138,11 +138,51 @@ function renderSvg(spec: MockupSpec, request:any) {
   return s+"</svg>";
 }
 
+function fallbackMockupSpecs(request:any): MockupSpec[] {
+  const analysis=request.analysis||{};
+  const project=String(request.project_name||"Project");
+  const features=Array.isArray(request.features)?request.features.filter(Boolean).slice(0,8):[];
+  const stack=Array.isArray(analysis.stack)?analysis.stack.filter(Boolean).slice(0,5):[];
+  const modules=Array.isArray(analysis.modules)?analysis.modules.filter(Boolean).slice(0,4):[];
+  const groups=Array.isArray(analysis.groups)?analysis.groups.filter(Boolean).slice(0,4):[];
+  const flags=Array.isArray(request.flags)?request.flags.filter(Boolean):[];
+  const nav=["Dashboard","Projects","Clients","Tasks","Reports","Settings"];
+  const primary=flags.includes("Payments")?"Review payment":"Create project";
+  const stats=[
+    "Projects",
+    analysis.hours ? "Estimated hours" : "Active work",
+    "Completion",
+    "Open items",
+  ];
+  const widgets=[
+    ...(features.length?features:[]),
+    ...modules.map((m:any)=>m.name).filter(Boolean),
+    ...groups.map((g:any)=>g.name).filter(Boolean),
+  ].slice(0,6);
+  const columns=["Item","Status","Owner","Updated","Priority"];
+  const forms=[
+    "Project name",
+    "Client",
+    "Status",
+    "Deadline",
+  ];
+  const common=(slot:MockupSpec["slot"],title:string,subtitle:string):MockupSpec=>({
+    slot,title,subtitle,nav,primaryAction:primary,stats,widgets,tableColumns:columns,formFields:forms,
+    theme:slot==="mobile"?"light":"neutral",
+  });
+  return [
+    common("overview",project+" overview","Project dashboard generated from the submitted brief."),
+    common("core",features[0]||"Core workflow","Primary user flow based on the requested features."),
+    common("admin","Administration","Internal controls for users, content and project operations."),
+    common("mobile","Mobile experience","Responsive mobile view of the core workflow."),
+  ];
+}
+
 async function runGeneration(request:any,userId:string,slot:string){
   const slots=["overview","core","admin","mobile"];
   if(!slots.includes(slot)) throw new Error("Invalid mockup slot.");
-  const specs=Array.isArray(request.analysis?.mockupSpecs)?request.analysis.mockupSpecs as MockupSpec[]:[];
-  if(specs.length!==4) throw new Error("Structured mockup specifications are missing. Re-run AI analysis.");
+  const storedSpecs=Array.isArray(request.analysis?.mockupSpecs)?request.analysis.mockupSpecs as MockupSpec[]:[];
+  const specs=storedSpecs.length===4 ? storedSpecs : fallbackMockupSpecs(request);
   const spec=specs.find(x=>x.slot===slot)||specs[0];
   const svg=renderSvg(spec,request);
   const path=userId+"/"+request.id+"/"+Date.now()+"-"+slot+".svg";
