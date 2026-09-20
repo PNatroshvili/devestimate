@@ -15,6 +15,8 @@ import {
 } from "../lib/clientRequests";
 import { loadRates, priceEstimate } from "../lib/pricing";
 import { isSupabaseConfigured } from "../lib/supabase";
+import { formatLearningMode, getLearningSignal } from "../lib/learning";
+import { loadProjects } from "../lib/projects";
 
 export default function ClientRequests({ onBack }: { onBack: () => void }) {
   const [links, setLinks] = useState<ClientRequestLink[]>([]);
@@ -185,6 +187,8 @@ function RequestDetailModal({ request, onClose, onMessageSaved }: { request: Cli
   const analysis = request.analysis;
   const rates = loadRates();
   const price = analysis ? priceEstimate(analysis.hours, request.type, rates, 1 + (analysis.complexity - 5) * 0.04) : null;
+  const learning = getLearningSignal(request, analysis, loadProjects());
+  const learnedPrice = analysis ? priceEstimate(learning.adjustedHours, request.type, rates, 1 + (analysis.complexity - 5) * 0.04) : null;
   const submittedAt = new Date(request.createdAt).toLocaleString("ka-GE", { dateStyle: "medium", timeStyle: "short" });
   const [clientMessage, setClientMessage] = useState(request.clientMessage || "");
   const [messageLoading, setMessageLoading] = useState(false);
@@ -425,7 +429,7 @@ ${budgetNote}
           </section>
 
           <section className="request-modal-section">
-            <div className="request-modal-section-head"><span>07</span><div><h3>დამკვეთისთვის გასაგზავნი ტექსტი</h3><p>AI ამზადებს მოკლე, მეგობრულ და კონკრეტულ ტექსტს, რომლის გაგზავნაც შეგიძლია პირდაპირ დამკვეთთან.</p></div></div>
+            <div className="request-modal-section-head"><span>08</span><div><h3>დამკვეთისთვის გასაგზავნი ტექსტი</h3><p>AI ამზადებს მოკლე, მეგობრულ და კონკრეტულ ტექსტს, რომლის გაგზავნაც შეგიძლია პირდაპირ დამკვეთთან.</p></div></div>
 
             <div className="request-client-message-toolbar">
               <button className="secondary" onClick={() => void generateMessage()} disabled={messageLoading}>

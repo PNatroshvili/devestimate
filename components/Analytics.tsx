@@ -3,6 +3,8 @@
 import { Activity, ArrowLeft, BarChart3, Clock3, DollarSign, Target, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { loadProjects, saveProject, StoredProject } from "../lib/projects";
+import { getLearningSignal } from "../lib/learning";
+import type { ClientRequest } from "../lib/clientRequests";
 
 const demo: StoredProject[] = [
   {id:"analytics-demo-1",name:"E-commerce Platform",client:"Demo",type:"Web",description:"",features:[],flags:[],deadline:"",budget:"",hours:80,complexity:7,value:4850,createdAt:"2026-08-12",status:"Completed",actualHours:92},
@@ -22,6 +24,18 @@ export default function Analytics({onBack}:{onBack:()=>void}) {
   const totalActual=withActual.reduce((sum,p)=>sum+(p.actualHours||0),0);
   const accuracy=withActual.length ? Math.max(0,Math.round(100-Math.abs(avgVariance))) : 0;
   const current=selected ? source.find(p=>p.id===selected) : null;
+  const learningSampleCount = withActual.length;
+  const learningVariance = withActual.length
+    ? withActual.reduce((sum,p)=>sum+(((p.actualHours||0)-p.hours)/p.hours*100),0)/withActual.length
+    : null;
+  const starterCoverage = Math.min(100, 58 + source.length * 3);
+  const demoRequest: ClientRequest = {
+    id:"analytics-learning-demo",requestLinkId:null,requestToken:"",
+    projectName:"Learning preview",clientName:"",company:"",email:"",phone:"",
+    type:"Web",description:"dashboard booking ecommerce",features:["Dashboard","Booking"],deadline:"",budget:"",
+    budgetCurrency:"GEL",flags:["Admin panel","Payments"],notes:"",status:"New",createdAt:new Date().toISOString(),
+  };
+  const learningPreview = getLearningSignal(demoRequest, {hours:72,complexity:6,confidence:64,missing:[],stack:[],groups:[]}, source);
 
   const updateActual=(project:StoredProject,value:string)=>{
     const actual=Math.max(0,Number(value)||0);
@@ -39,6 +53,17 @@ export default function Analytics({onBack}:{onBack:()=>void}) {
       <div><Clock3/><span>Estimated hours</span><strong>{totalEstimated}h</strong><small>{completed.length} completed project{completed.length===1?"":"s"}</small></div>
       <div><Activity/><span>Actual hours</span><strong>{totalActual || "—"}</strong><small>Recorded delivery time</small></div>
       <div><TrendingUp/><span>Average variance</span><strong>{withActual.length ? (avgVariance>0?"+":"")+avgVariance.toFixed(1)+"%" : "—"}</strong><small>Actual vs estimated</small></div>
+    </div>
+
+    <div className="np-card estimator-intelligence-card">
+      <div className="np-card-head"><div><h2>Estimator Intelligence</h2><p>როგორ სწავლობს და ასწორებს სისტემა future estimates-ს.</p></div><span>{learningSampleCount ? "LEARNING" : "STARTER MODE"}</span></div>
+      <div className="learning-overview-grid">
+        <div><span>რეალური პროექტები</span><strong>{learningSampleCount || "—"}</strong><small>actual hours-ით</small></div>
+        <div><span>საშუალო გადახრა</span><strong>{learningVariance === null ? "—" : (learningVariance > 0 ? "+" : "") + learningVariance.toFixed(1) + "%"}</strong><small>actual vs estimated</small></div>
+        <div><span>Starter coverage</span><strong>{starterCoverage}%</strong><small>საწყისი წესები</small></div>
+        <div><span>Preview confidence</span><strong>{learningPreview.confidence}%</strong><small>მაგალითის request</small></div>
+      </div>
+      <div className="learning-note"><span>{learningSampleCount >= 2 ? "სისტემა უკვე იყენებს შენს ისტორიულ მონაცემებს მსგავსი პროექტების estimate-ის კორექტირებისთვის." : "ისტორიული პროექტების არქონის შემთხვევაში estimate მუშაობს starter rules + AI analysis-ზე და კორექტირებას მომავალში დაიწყებს."}</span></div>
     </div>
 
     <div className="analytics-grid">
