@@ -79,7 +79,7 @@ export default function Dashboard() {
   };
 
   const openRequest = (requestId: string) => {
-    window.location.href = "/requests/" + encodeURIComponent(requestId);
+    window.location.href = "/requests/?id=" + encodeURIComponent(requestId);
   };
 
   if (isSupabaseConfigured && authLoading) {
@@ -96,8 +96,8 @@ export default function Dashboard() {
     if (page === "projects") return <Projects onBack={() => setPage("dashboard")} onNew={() => setPage("new")} onOpen={openProject} />;
     if (page === "templates") return <Templates onBack={() => setPage("dashboard")} onNew={() => setPage("new")} />;
     if (page === "analytics") return <Analytics onBack={() => setPage("dashboard")} />;
-    if (page === "requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} standalone={Boolean(requestIdFromUrl && window.location.pathname.startsWith("/requests/"))} onBack={() => {
-      if (window.location.pathname.startsWith("/requests/")) {
+    if (page === "requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} standalone={Boolean(requestIdFromUrl && window.location.pathname.startsWith("/requests"))} onBack={() => {
+      if (window.location.pathname.startsWith("/requests")) {
         window.location.href = "/";
       } else {
         setRequestIdFromUrl(null);
