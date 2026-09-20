@@ -1,8 +1,45 @@
 "use client";
-import {BarChart3,Bell,BookOpen,CircleDollarSign,FileText,FolderKanban,LayoutDashboard,Plus,Search,Settings,Sparkles,Wrench,ChevronDown} from "lucide-react";
-const projects=[["E-commerce Platform","Web Application","In Progress","$4,850","Oct 12, 2026","🟣"],["Hotel Booking System","Web + Mobile","Proposal","$6,200","Oct 10, 2026","🩷"],["Restaurant Website","WordPress","Completed","$1,200","Oct 05, 2026","🟠"],["Fitness Mobile App","Mobile Application","Analysis","$5,600","Oct 02, 2026","🔴"],["Corporate Website","Web Application","Won","$2,300","Sep 28, 2026","🔵"]];
-const tech=[["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Node.js","15%"],["Others","17%"]];
+import { BarChart3, Bell, BookOpen, CircleDollarSign, FileText, FolderKanban, LayoutDashboard, Plus, Search, Settings, Sparkles, Wrench } from "lucide-react";
+import { useState } from "react";
+import NewProject from "./NewProject";
+
+const projects = [
+  ["E-commerce Platform","Web Application","In Progress","$4,850","Oct 12, 2026","🟣"],
+  ["Hotel Booking System","Web + Mobile","Proposal","$6,200","Oct 10, 2026","🩷"],
+  ["Restaurant Website","WordPress","Completed","$1,200","Oct 05, 2026","🟠"],
+  ["Fitness Mobile App","Mobile Application","Analysis","$5,600","Oct 02, 2026","🔴"],
+  ["Corporate Website","Web Application","Won","$2,300","Sep 28, 2026","🔵"]
+];
+const tech = [["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Node.js","15%"],["Others","17%"]];
+
 function Status({v}:{v:string}){return <span className={"status "+v.toLowerCase().replaceAll(" ","-")}>{v}</span>}
-export default function Dashboard(){return <main className="shell"><aside className="sidebar"><div className="brand"><b>D</b><span>DevEstimate</span></div><nav><a className="active"><LayoutDashboard/>Dashboard</a><a><Plus/>New Project</a><a><FolderKanban/>Projects</a><a><FileText/>Templates</a><a><CircleDollarSign/>Pricing & Rates</a><a><BookOpen/>Knowledge Base</a><a><BarChart3/>Analytics</a><a><Settings/>Settings</a></nav><div className="bottom"><div className="ai"><Sparkles/><div><strong>AI Estimator</strong><small>Ready for your next brief.</small></div></div><div className="user"><i>D</i><div><strong>Developer</strong><small>Full Stack</small></div></div></div></aside><section className="content"><header><div className="search"><Search/><input placeholder="Search projects..."/></div><button className="bell"><Bell/></button><i className="mini">D</i></header><div className="heading"><div><small>OVERVIEW</small><h1>Dashboard</h1><p>Turn ideas into organized plans.</p></div><button className="primary"><Plus/>New Project</button></div><div className="stats"><Stat l="Total Projects" v="12" n="+3 this month"/><Stat l="In Progress" v="4" n="2 due this week"/><Stat l="Completed" v="5" n="+2 this month"/><Stat l="Estimated Value" v="$28,450" n="+12.4%"/></div><div className="grid"><section className="panel projects"><Head title="Recent Projects" sub="Latest estimation activity"/>{projects.map(p=><div className="project" key={p[0]}><i>{p[5]}</i><div><strong>{p[0]}</strong><small>{p[1]}</small></div><Status v={p[2]}/><div className="value"><strong>{p[3]}</strong><small>{p[4]}</small></div></div>)}</section><section className="panel chartpanel"><Head title="Project Value" sub="Estimated value over time"/><div className="chart"><div className="labels"><span>$8k</span><span>$6k</span><span>$4k</span><span>$2k</span><span>$0</span></div><div className="chartarea"><span/><span/><span/><span/><svg viewBox="0 0 520 190" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5b7cff" stopOpacity=".25"/><stop offset="1" stopColor="#5b7cff" stopOpacity="0"/></linearGradient></defs><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20L520 190L0 190Z" fill="url(#g)"/><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20" fill="none" stroke="#5b7cff" strokeWidth="3"/></svg><div className="months"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div></div></div></section><section className="panel tech"><Head title="Top Technologies" sub="By project count"/>{tech.map(t=><div className="t" key={t[0]}><div><span>{t[0]}</span><b>{t[1]}</b></div><em><i style={{width:t[1]}}/></em></div>)}</section><section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section></div></section></main>}
+
+export default function Dashboard(){
+  const [page,setPage]=useState<"dashboard"|"new">("dashboard");
+  if(page==="new") return <NewProject onBack={()=>setPage("dashboard")}/>;
+
+  return <main className="shell">
+    <aside className="sidebar">
+      <div className="brand"><b>D</b><span>DevEstimate</span></div>
+      <nav>
+        <a className="active" onClick={()=>setPage("dashboard")}><LayoutDashboard/>Dashboard</a>
+        <a onClick={()=>setPage("new")}><Plus/>New Project</a>
+        <a><FolderKanban/>Projects</a><a><FileText/>Templates</a><a><CircleDollarSign/>Pricing & Rates</a><a><BookOpen/>Knowledge Base</a><a><BarChart3/>Analytics</a><a><Settings/>Settings</a>
+      </nav>
+      <div className="bottom"><div className="ai"><Sparkles/><div><strong>AI Estimator</strong><small>Ready for your next brief.</small></div></div><div className="user"><i>D</i><div><strong>Developer</strong><small>Full Stack</small></div></div></div>
+    </aside>
+    <section className="content">
+      <header><div className="search"><Search/><input placeholder="Search projects..."/></div><button className="bell"><Bell/></button><i className="mini">D</i></header>
+      <div className="heading"><div><small>OVERVIEW</small><h1>Dashboard</h1><p>Turn ideas into organized plans.</p></div><button className="primary" onClick={()=>setPage("new")}><Plus/>New Project</button></div>
+      <div className="stats"><Stat l="Total Projects" v="12" n="+3 this month"/><Stat l="In Progress" v="4" n="2 due this week"/><Stat l="Completed" v="5" n="+2 this month"/><Stat l="Estimated Value" v="$28,450" n="+12.4%"/></div>
+      <div className="grid">
+        <section className="panel projects"><Head title="Recent Projects" sub="Latest estimation activity"/>{projects.map(p=><div className="project" key={p[0]}><i>{p[5]}</i><div><strong>{p[0]}</strong><small>{p[1]}</small></div><Status v={p[2]}/><div className="value"><strong>{p[3]}</strong><small>{p[4]}</small></div></div>)}</section>
+        <section className="panel chartpanel"><Head title="Project Value" sub="Estimated value over time"/><div className="chart"><div className="labels"><span>$8k</span><span>$6k</span><span>$4k</span><span>$2k</span><span>$0</span></div><div className="chartarea"><span/><span/><span/><span/><svg viewBox="0 0 520 190" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5b7cff" stopOpacity=".25"/><stop offset="1" stopColor="#5b7cff" stopOpacity="0"/></linearGradient></defs><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20L520 190L0 190Z" fill="url(#g)"/><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20" fill="none" stroke="#5b7cff" strokeWidth="3"/></svg><div className="months"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div></div></div></section>
+        <section className="panel tech"><Head title="Top Technologies" sub="By project count"/>{tech.map(t=><div className="t" key={t[0]}><div><span>{t[0]}</span><b>{t[1]}</b></div><em><i style={{width:t[1]}}/></em></div>)}</section>
+        <section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button onClick={()=>setPage("new")}><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section>
+      </div>
+    </section>
+  </main>
+}
 function Stat({l,v,n}:{l:string,v:string,n:string}){return <div className="stat"><small>{l}</small><strong>{v}</strong><em>{n}</em></div>}
 function Head({title,sub}:{title:string,sub:string}){return <div className="panelhead"><div><h2>{title}</h2><small>{sub}</small></div><button>View All</button></div>}
