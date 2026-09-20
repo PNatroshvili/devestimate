@@ -227,3 +227,19 @@ button:active:not(:disabled){transform:translateY(1px) scale(.992)}
 .request-detail-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:720px){.request-detail-metrics{grid-template-columns:1fr 1fr}}
 html{scroll-behavior:smooth}
+
+
+/* Soft motion system */
+@keyframes smoothEnter{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.content{animation:smoothEnter .38s cubic-bezier(.22,1,.36,1)}
+.client-container>.client-header{animation:smoothEnter .3s ease-out}
+.client-form-head{animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .03s both}
+.client-steps{animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .07s both}
+.client-card:nth-of-type(1){animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .10s both}
+.client-card:nth-of-type(2){animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .14s both}
+.client-card:nth-of-type(3){animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .18s both}
+.client-card:nth-of-type(4){animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .22s both}
+.client-submit-bar{animation:smoothEnter .42s cubic-bezier(.22,1,.36,1) .26s both}
