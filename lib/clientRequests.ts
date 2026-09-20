@@ -144,6 +144,21 @@ export async function loadClientRequests(): Promise<ClientRequest[]> {
   return (data || []).map(mapRequest);
 }
 
+export async function analyzeClientRequestWithAI(payload: {
+  projectName: string;
+  type: ClientProjectType;
+  description: string;
+  features: string[];
+  flags: string[];
+  deadline: string;
+  notes: string;
+}) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.functions.invoke("analyze-request", { body: payload });
+  if (error || !data?.analysis) return null;
+  return data.analysis as RequestAnalysis;
+}
+
 export async function submitClientRequest(token: string, payload: ClientRequestInput) {
   if (!supabase) {
     const link = loadLocal<ClientRequestLink>(LINKS_KEY).find((item) => item.token === token && item.active);
