@@ -11,9 +11,10 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || "";
 const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN") || "";
+
 const cloudflarePrimaryModel = "@cf/black-forest-labs/flux-2-dev";
 const cloudflareFastModel = "@cf/black-forest-labs/flux-2-klein-4b";
-const cloudflareEmergencyModel = "@cf/black-forest-labs/flux-1-schnell";
+const cloudflareEmergencyModel = "@cf/bytedance/stable-diffusion-xl-lightning";
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -34,9 +35,9 @@ function makePrompt(slot: string, request: any) {
   const brief = JSON.stringify({
     projectName: String(request.project_name || ""),
     projectType: String(request.type || ""),
-    description: String(request.description || "").slice(0, 8000),
-    features: Array.isArray(request.features) ? request.features.slice(0, 30) : [],
-    scopeFlags: Array.isArray(request.flags) ? request.flags.slice(0, 20) : [],
+    description: String(request.description || "").slice(0, 7000),
+    features: Array.isArray(request.features) ? request.features.slice(0, 28) : [],
+    scopeFlags: Array.isArray(request.flags) ? request.flags.slice(0, 18) : [],
     recommendedTechnologies: Array.isArray(analysis.stack) ? analysis.stack : [],
     modules: Array.isArray(analysis.modules) ? analysis.modules : [],
     architecture: analysis.architecture || {},
@@ -66,11 +67,7 @@ function makePrompt(slot: string, request: any) {
   ].join("\n\n");
 }
 
-async function fetchCloudflare(
-  url: string,
-  init: RequestInit,
-  timeoutMs: number,
-) {
+async function fetchCloudflare(url: string, init: RequestInit, timeoutMs: number) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("TIMEOUT"), timeoutMs);
   try {
@@ -80,17 +77,17 @@ async function fetchCloudflare(
   }
 }
 
-async function parseImageResponse(response: Response, provider: string) {
+async function parseFluxResponse(response: Response, provider: string) {
   const detail = await response.text();
   if (!response.ok) {
     let parsed: any = null;
     try { parsed = JSON.parse(detail); } catch {}
-    const cloudflareCode = parsed?.errors?.[0]?.code || "";
+    const code = parsed?.errors?.[0]?.code || "";
     throw new Error(
       provider +
       " " +
       response.status +
-      (cloudflareCode ? " (" + cloudflareCode + ")" : "") +
+      (code ? " (" + code + ")" : "") +
       ": " +
       detail.slice(0, 1800),
     );
@@ -118,8 +115,9 @@ async function generateImage(prompt: string) {
 
   const errors: string[] = [];
 
-  // Primary: highest-quality model. Its official docs note that it is slower than
-  // other Workers AI image models, so keep a hard timeout and fall back cleanly.
+  // FLUX.2 dev is the quality-first path. It is intentionally given most of
+  // the single-invocation time budget because Cloudflare documents it as slower
+  // than the other image models.
   try {
     const form = new FormData();
     form.append("prompt", prompt);
@@ -130,16 +128,20 @@ async function generateImage(prompt: string) {
 
     const response = await fetchCloudflare(
       endpoint(cloudflarePrimaryModel),
-      { method: "POST", headers: { Authorization: "Bearer " + cloudflareApiToken }, body: form },
-      45000,
+      {
+        method: "POST",
+        headers: { Authorization: "Bearer " + cloudflareApiToken },
+        body: form,
+      },
+      70000,
     );
-    return await parseImageResponse(response, "Cloudflare FLUX.2 dev");
+    return await parseFluxResponse(response, "Cloudflare FLUX.2 dev");
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
   }
 
-  // Fast quality fallback: FLUX.2 klein 4B uses the same multipart REST shape
-  // and is explicitly optimized for faster generation.
+  // Fast fallback: FLUX.2 klein 4B is fixed at four inference steps and is
+  // optimized for faster generation.
   try {
     const form = new FormData();
     form.append("prompt", prompt);
@@ -149,18 +151,21 @@ async function generateImage(prompt: string) {
 
     const response = await fetchCloudflare(
       endpoint(cloudflareFastModel),
-      { method: "POST", headers: { Authorization: "Bearer " + cloudflareApiToken }, body: form },
-      30000,
+      {
+        method: "POST",
+        headers: { Authorization: "Bearer " + cloudflareApiToken },
+        body: form,
+      },
+      35000,
     );
-    return await parseImageResponse(response, "Cloudflare FLUX.2 klein 4B");
+    return await parseFluxResponse(response, "Cloudflare FLUX.2 klein 4B");
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
   }
 
-  // Emergency fallback: FLUX.1 schnell has a simple JSON REST API and is cheap/free-plan friendly.
-  // Keep the compact prompt below its documented 2048-character limit.
+  // Last-resort free image model: SDXL-Lightning returns the image bytes
+  // directly over REST and is much faster than FLUX.2 on cold capacity.
   try {
-    const compactPrompt = prompt.slice(0, 1900);
     const response = await fetchCloudflare(
       endpoint(cloudflareEmergencyModel),
       {
@@ -169,11 +174,25 @@ async function generateImage(prompt: string) {
           Authorization: "Bearer " + cloudflareApiToken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: compactPrompt, steps: 4 }),
+        body: JSON.stringify({
+          prompt: prompt.slice(0, 1800),
+          width: 1024,
+          height: 768,
+          num_steps: 4,
+          guidance: 7.5,
+        }),
       },
-      25000,
+      30000,
     );
-    return await parseImageResponse(response, "Cloudflare FLUX.1 schnell");
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error("Cloudflare SDXL-Lightning " + response.status + ": " + detail.slice(0, 1800));
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length) throw new Error("Cloudflare SDXL-Lightning returned an empty image.");
+    return bytes;
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
   }
@@ -181,89 +200,60 @@ async function generateImage(prompt: string) {
   throw new Error(errors.join("\n\n"));
 }
 
-async function runGeneration(request: any, userId: string) {
-  const slots = ["overview", "core", "admin", "mobile"];
-  const generated: any[] = [];
+const slots = ["overview", "core", "admin", "mobile"] as const;
 
-  await admin
-    .from("client_requests")
-    .update({ mockups: [], mockups_status: "generating", mockups_error: null })
-    .eq("id", request.id);
+async function generateOneSlot(request: any, userId: string, slot: typeof slots[number]) {
+  if (!slots.includes(slot)) throw new Error("Invalid mockup slot.");
 
-  // Run two images at a time. This is much faster than four fully sequential
-  // calls while still avoiding an aggressive burst against Workers AI.
-  for (let start = 0; start < slots.length; start += 2) {
-    const batch = slots.slice(start, start + 2);
-    const results = await Promise.all(
-      batch.map(async (slot, offset) => {
-        const bytes = await generateImage(makePrompt(slot, request));
-        const timestamp = Date.now();
-        const path =
-          userId +
-          "/" +
-          request.id +
-          "/" +
-          timestamp +
-          "-" +
-          (start + offset) +
-          ".jpg";
+  const prompt = makePrompt(slot, request);
+  const bytes = await generateImage(prompt);
+  const path =
+    userId +
+    "/" +
+    request.id +
+    "/" +
+    Date.now() +
+    "-" +
+    slot +
+    ".jpg";
 
-        const upload = await admin.storage
-          .from("request-mockups")
-          .upload(path, bytes, {
-            contentType: "image/jpeg",
-            upsert: true,
-            cacheControl: "31536000",
-          });
+  const upload = await admin.storage
+    .from("request-mockups")
+    .upload(path, bytes, {
+      contentType: "image/jpeg",
+      upsert: true,
+      cacheControl: "31536000",
+    });
 
-        if (upload.error) throw upload.error;
+  if (upload.error) throw upload.error;
 
-        const titles: Record<string, string> = {
-          overview: "Product overview",
-          core: "Core workflow",
-          admin: "Admin / operations",
-          mobile: "Mobile experience",
-        };
+  const titles: Record<string, string> = {
+    overview: "Product overview",
+    core: "Core workflow",
+    admin: "Admin / operations",
+    mobile: "Mobile experience",
+  };
 
-        const descriptions: Record<string, string> = {
-          overview: "Main product surface and information hierarchy.",
-          core: "Primary user flow derived from the request scope.",
-          admin: "Operational interface based on the project requirements.",
-          mobile: "Responsive mobile interpretation of the core experience.",
-        };
+  const descriptions: Record<string, string> = {
+    overview: "Main product surface and information hierarchy.",
+    core: "Primary user flow derived from the request scope.",
+    admin: "Operational interface based on the project requirements.",
+    mobile: "Responsive mobile interpretation of the core experience.",
+  };
 
-        return {
-          slot,
-          title: titles[slot],
-          description: descriptions[slot],
-          path,
-          generatedAt: new Date().toISOString(),
-        };
-      }),
-    );
+  const current = Array.isArray(request.mockups) ? request.mockups : [];
+  const next = [
+    ...current.filter((item: any) => item?.slot !== slot),
+    {
+      slot,
+      title: titles[slot],
+      description: descriptions[slot],
+      path,
+      generatedAt: new Date().toISOString(),
+    },
+  ];
 
-    generated.push(...results);
-
-    await admin
-      .from("client_requests")
-      .update({
-        mockups: generated,
-        mockups_status: "generating",
-        mockups_error: null,
-      })
-      .eq("id", request.id);
-  }
-
-  await admin
-    .from("client_requests")
-    .update({
-      mockups: generated,
-      mockups_status: "ready",
-      mockups_error: null,
-    })
-    .eq("id", request.id);
-
-  return generated;
+  return { next, created: { slot, path } };
 }
 
 Deno.serve(async (req) => {
@@ -306,9 +296,12 @@ Deno.serve(async (req) => {
   const requestId = String(body.requestId || "").trim();
   if (!requestId) return json({ error: "requestId is required" }, 400);
 
+  const requestedSlot = String(body.slot || "").trim();
+  const slot = (slots.includes(requestedSlot as typeof slots[number]) ? requestedSlot : "") as typeof slots[number] | "";
+
   const { data: request, error: requestError } = await admin
     .from("client_requests")
-    .select("id,owner_id,project_name,client_name,type,description,features,flags,analysis")
+    .select("id,owner_id,project_name,client_name,type,description,features,flags,analysis,mockups")
     .eq("id", requestId)
     .maybeSingle();
 
@@ -316,9 +309,30 @@ Deno.serve(async (req) => {
   if (!request) return json({ error: "Request not found" }, 404);
   if (request.owner_id !== userId) return json({ error: "Forbidden" }, 403);
 
+  const existing = Array.isArray(request.mockups) ? request.mockups : [];
+  const slotToGenerate = slot || (slots.find((candidate) => !existing.some((item: any) => item?.slot === candidate)) || "overview") as typeof slots[number];
+
+  await admin
+    .from("client_requests")
+    .update({
+      mockups_status: "generating",
+      mockups_error: null,
+    })
+    .eq("id", request.id);
+
   try {
-    const generated = await runGeneration(request, userId);
-    return json({ ok: true, mockups: generated });
+    const { next } = await generateOneSlot(request, userId, slotToGenerate);
+
+    await admin
+      .from("client_requests")
+      .update({
+        mockups: next,
+        mockups_status: next.length === slots.length ? "ready" : "generating",
+        mockups_error: null,
+      })
+      .eq("id", request.id);
+
+    return json({ ok: true, mockups: next, generatedSlot: slotToGenerate });
   } catch (error) {
     const code =
       error && typeof error === "object" && "code" in error
@@ -328,7 +342,7 @@ Deno.serve(async (req) => {
     const message =
       code === "CLOUDFLARE_NOT_CONFIGURED"
         ? "Cloudflare Workers AI is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to Supabase secrets."
-        : (error instanceof Error ? error.message : "Mockup generation failed.");
+        : (error instanceof Error ? error.message : String(error));
 
     await admin
       .from("client_requests")
