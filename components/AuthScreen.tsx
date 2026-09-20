@@ -22,11 +22,11 @@ export default function AuthScreen() {
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <div className="auth-logo"><b>D</b><span>DevEstimate</span></div>
+        <div className="auth-logo"><img src="/skup-mark.svg" alt="SKUP Studio" /><span>SKUP Studio</span></div>
         <LockKeyhole className="auth-icon" />
         <small>PRIVATE WORKSPACE</small>
-        <h1>Sign in to DevEstimate</h1>
-        <p>This workspace contains client briefs, internal estimates and pricing.</p>
+        <h1>SKUP Studio</h1>
+        <p>ეს არის SKUP Studio-ს შიდა სამუშაო სივრცე, სადაც ინახება კლიენტების მოთხოვნები, შეფასებები და ფასები.</p>
         <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" /></label>
         <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" onKeyDown={(e) => e.key === "Enter" && signIn()} /></label>
         {error && <div className="auth-error">{error}</div>}
