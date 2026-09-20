@@ -357,6 +357,8 @@ ${budgetNote}
             <div className="request-analysis-summary">
               <div><span>შეფასების საათები</span><strong>{analysis?.hours || "—"} სთ</strong></div>
               <div><span>სირთულე</span><strong>{analysis?.complexity || "—"}/10</strong></div>
+              <div><span>AI confidence</span><strong>{analysis?.confidence ? analysis.confidence + "%" : "—"}</strong></div>
+              <div><span>სავარაუდო ვადა</span><strong>{analysis?.timelineWeeks ? analysis.timelineWeeks + " კვირა" : "—"}</strong></div>
               <div><span>შიდა ფასი</span><strong>{price ? "$" + Math.round(price.final).toLocaleString() : "—"}</strong></div>
               <div><span>კლიენტის ბიუჯეტი</span><strong>{request.budget ? `${request.budgetCurrency} ${request.budget}` : "—"}</strong></div>
             </div>
@@ -367,6 +369,59 @@ ${budgetNote}
               <div className="request-modal-field"><span>დასაზუსტებელი საკითხები</span>{analysis?.missing?.length ? <ul>{analysis.missing.map((item) => <li key={item}>{item}</li>)}</ul> : <EmptyValue text="დამატებითი კითხვები არ არის." />}</div>
             </div>
             {analysis?.groups?.length ? <div className="request-modal-field request-modal-wide"><span>სამუშაოს ჯგუფები</span><div className="request-groups">{analysis.groups.map((group) => <div key={group.name}><strong>{group.name}</strong><span>{group.count} კომპონენტი • {group.hours} სთ</span></div>)}</div></div> : null}
+
+            {analysis?.modules?.length ? (
+              <div className="request-modal-field request-modal-wide">
+                <span>მოდულები და საათები</span>
+                <div className="request-groups">{analysis.modules.map((module) => (
+                  <div key={module.name}>
+                    <strong>{module.name} • {module.priority === "core" ? "ძირითადი" : "დამატებითი"}</strong>
+                    <span>{module.description} • {module.hours} სთ</span>
+                  </div>
+                ))}</div>
+              </div>
+            ) : null}
+
+            {analysis?.architecture ? (
+              <div className="request-modal-field request-modal-wide">
+                <span>ტექნიკური არქიტექტურა</span>
+                <div className="request-groups">
+                  {[
+                    ["Frontend", analysis.architecture.frontend],
+                    ["Backend", analysis.architecture.backend],
+                    ["მონაცემები", analysis.architecture.data],
+                    ["ავტორიზაცია", analysis.architecture.auth],
+                    ["Infrastructure", analysis.architecture.infra],
+                  ].map(([label, items]) => (
+                    <div key={String(label)}>
+                      <strong>{String(label)}</strong>
+                      <span>{(items as string[]).join(" · ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {analysis?.risks?.length ? (
+              <div className="request-modal-field request-modal-wide">
+                <span>რისკები</span>
+                <ul>{analysis.risks.map((risk) => <li key={risk.title}><strong>{risk.level === "high" ? "მაღალი" : risk.level === "medium" ? "საშუალო" : "დაბალი"} — {risk.title}:</strong> {risk.detail}</li>)}</ul>
+              </div>
+            ) : null}
+
+            {analysis?.assumptions?.length ? (
+              <div className="request-modal-field request-modal-wide">
+                <span>ვარაუდები</span>
+                <ul>{analysis.assumptions.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+            ) : null}
+
+            {analysis?.milestones?.length ? (
+              <div className="request-modal-field request-modal-wide">
+                <span>ეტაპები</span>
+                <div className="request-groups">{analysis.milestones.map((item, index) => <div key={item}><strong>{String(index + 1).padStart(2, "0")}</strong><span>{item}</span></div>)}</div>
+              </div>
+            ) : null}
           </section>
 
           <section className="request-modal-section">
