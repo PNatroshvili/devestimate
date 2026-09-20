@@ -33,6 +33,7 @@ export default function ClientRequestForm() {
   const [featuresText, setFeaturesText] = useState("");
   const [deadline, setDeadline] = useState("");
   const [budget, setBudget] = useState("");
+  const [budgetCurrency, setBudgetCurrency] = useState<"GEL" | "USD" | "EUR">("GEL");
   const [flags, setFlags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
