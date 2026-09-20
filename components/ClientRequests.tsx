@@ -18,7 +18,7 @@ import { isSupabaseConfigured } from "../lib/supabase";
 import { formatLearningMode, getLearningSignal } from "../lib/learning";
 import { loadProjects } from "../lib/projects";
 
-export default function ClientRequests({ onBack }: { onBack: () => void }) {
+export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: () => void; requestIdFromUrl?: string | null }) {
   const [links, setLinks] = useState<ClientRequestLink[]>([]);
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [label, setLabel] = useState("");
@@ -66,6 +66,10 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
       const [nextLinks, nextRequests] = await Promise.all([loadRequestLinks(), loadClientRequests()]);
       setLinks(nextLinks);
       setRequests(nextRequests);
+      if (requestIdFromUrl) {
+        const target = nextRequests.find((item) => item.id === requestIdFromUrl);
+        if (target) setSelected(target);
+      }
       void runAiForNewRequests(nextRequests);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load client requests.");
@@ -74,7 +78,7 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
     }
   };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [requestIdFromUrl]);
 
   const newRequests = useMemo(() => requests.filter((item) => item.status === "New").length, [requests]);
   const origin = "https://skup.ge";
@@ -153,7 +157,7 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
                   <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => setSelected(request)}>
                     <div className="request-icon"><ClipboardList /></div>
                     <div className="request-row-main"><strong>{request.projectName}</strong><small>{request.clientName}{request.company ? " · " + request.company : ""} · {request.type}</small></div>
-                    <div className="request-row-meta"><span>{request.analysis?.hours || "—"}h</span><b>{request.status}</b></div>
+                    <div className="request-row-meta"><span>{new Date(request.createdAt).toLocaleDateString("ka-GE")}</span><b>{request.status}</b></div>
                   </button>
                 ))}
               </div>
