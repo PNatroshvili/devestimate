@@ -66,6 +66,13 @@ create policy "client_requests_owner_select"
   to authenticated
   using (auth.uid() = owner_id);
 
+drop policy if exists "client_requests_owner_update" on public.client_requests;
+create policy "client_requests_owner_update"
+  on public.client_requests for update
+  to authenticated
+  using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
+
 create or replace function public.submit_client_request(p_token text, p_payload jsonb)
 returns uuid
 language plpgsql
@@ -143,4 +150,4 @@ grant execute on function public.submit_client_request(text, jsonb) to anon;
 grant execute on function public.submit_client_request(text, jsonb) to authenticated;
 
 grant select, insert, update on public.request_links to authenticated;
-grant select on public.client_requests to authenticated;
+grant select, update on public.client_requests to authenticated;
