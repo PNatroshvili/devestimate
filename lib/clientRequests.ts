@@ -1,6 +1,15 @@
 import { supabase } from "./supabase";
 import type { RequestAnalysis, ClientProjectType } from "./requestAnalysis";
 
+export type RequestMockup = {
+  slot: "overview" | "core" | "admin" | "mobile" | string;
+  title: string;
+  description: string;
+  path: string;
+  generatedAt: string;
+  url?: string;
+};
+
 export type ClientRequestLink = {
   id: string;
   token: string;
@@ -28,6 +37,7 @@ export type ClientRequest = {
   flags: string[];
   notes: string;
   analysis?: RequestAnalysis;
+  mockups?: RequestMockup[];
   clientMessage?: string;
   status: "New" | "Reviewed" | "Converted" | "Archived";
   createdAt: string;
@@ -90,6 +100,7 @@ const mapRequest = (row: any): ClientRequest => ({
   flags: row.flags || [],
   notes: row.notes || "",
   analysis: row.analysis || undefined,
+  mockups: Array.isArray(row.mockups) ? row.mockups : [],
   clientMessage: row.client_message || undefined,
   status: row.status || "New",
   createdAt: row.created_at,
@@ -161,6 +172,34 @@ export async function analyzeClientRequestWithAI(payload: {
   const { data, error } = await supabase.functions.invoke("analyze-request", { body: payload });
   if (error || !data?.analysis) return null;
   return data.analysis as RequestAnalysis;
+}
+
+export async function signRequestMockupUrls(mockups: RequestMockup[]) {
+  if (!supabase || !mockups.length) return mockups;
+  const signed = await Promise.all(
+    mockups.map(async (item) => {
+      try {
+        const { data } = await supabase
+          .storage
+          .from("request-mockups")
+          .createSignedUrl(item.path, 60 * 60 * 24);
+        return { ...item, url: data?.signedUrl || undefined };
+      } catch {
+        return item;
+      }
+    }),
+  );
+  return signed;
+}
+
+export async function generateRequestMockupsWithAI(requestId: string) {
+  if (!supabase) return [];
+  const { data, error } = await supabase.functions.invoke("generate-request-mockups", {
+    body: { requestId },
+  });
+  if (error) throw error;
+  const mockups = (data?.mockups || []) as RequestMockup[];
+  return signRequestMockupUrls(mockups);
 }
 
 export async function updateClientRequestAnalysis(id: string, analysis: RequestAnalysis) {
