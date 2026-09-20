@@ -2,6 +2,7 @@
 import { BarChart3, Bell, BookOpen, CircleDollarSign, FileText, FolderKanban, LayoutDashboard, Plus, Search, Settings, Sparkles, Wrench } from "lucide-react";
 import { useState } from "react";
 import NewProject from "./NewProject";
+import PricingRates from "./PricingRates";
 
 const projects = [
   ["E-commerce Platform","Web Application","In Progress","$4,850","Oct 12, 2026","🟣"],
@@ -15,8 +16,9 @@ const tech = [["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Nod
 function Status({v}:{v:string}){return <span className={"status "+v.toLowerCase().replaceAll(" ","-")}>{v}</span>}
 
 export default function Dashboard(){
-  const [page,setPage]=useState<"dashboard"|"new">("dashboard");
+  const [page,setPage]=useState<"dashboard"|"new"|"rates">("dashboard");
   if(page==="new") return <NewProject onBack={()=>setPage("dashboard")}/>;
+  if(page==="rates") return <PricingRates onBack={()=>setPage("dashboard")}/>;
 
   return <main className="shell">
     <aside className="sidebar">
@@ -24,7 +26,7 @@ export default function Dashboard(){
       <nav>
         <a className="active" onClick={()=>setPage("dashboard")}><LayoutDashboard/>Dashboard</a>
         <a onClick={()=>setPage("new")}><Plus/>New Project</a>
-        <a><FolderKanban/>Projects</a><a><FileText/>Templates</a><a><CircleDollarSign/>Pricing & Rates</a><a><BookOpen/>Knowledge Base</a><a><BarChart3/>Analytics</a><a><Settings/>Settings</a>
+        <a><FolderKanban/>Projects</a><a><FileText/>Templates</a><a onClick={()=>setPage("rates")}><CircleDollarSign/>Pricing & Rates</a><a><BookOpen/>Knowledge Base</a><a><BarChart3/>Analytics</a><a><Settings/>Settings</a>
       </nav>
       <div className="bottom"><div className="ai"><Sparkles/><div><strong>AI Estimator</strong><small>Ready for your next brief.</small></div></div><div className="user"><i>D</i><div><strong>Developer</strong><small>Full Stack</small></div></div></div>
     </aside>
@@ -36,7 +38,7 @@ export default function Dashboard(){
         <section className="panel projects"><Head title="Recent Projects" sub="Latest estimation activity"/>{projects.map(p=><div className="project" key={p[0]}><i>{p[5]}</i><div><strong>{p[0]}</strong><small>{p[1]}</small></div><Status v={p[2]}/><div className="value"><strong>{p[3]}</strong><small>{p[4]}</small></div></div>)}</section>
         <section className="panel chartpanel"><Head title="Project Value" sub="Estimated value over time"/><div className="chart"><div className="labels"><span>$8k</span><span>$6k</span><span>$4k</span><span>$2k</span><span>$0</span></div><div className="chartarea"><span/><span/><span/><span/><svg viewBox="0 0 520 190" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5b7cff" stopOpacity=".25"/><stop offset="1" stopColor="#5b7cff" stopOpacity="0"/></linearGradient></defs><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20L520 190L0 190Z" fill="url(#g)"/><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20" fill="none" stroke="#5b7cff" strokeWidth="3"/></svg><div className="months"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div></div></div></section>
         <section className="panel tech"><Head title="Top Technologies" sub="By project count"/>{tech.map(t=><div className="t" key={t[0]}><div><span>{t[0]}</span><b>{t[1]}</b></div><em><i style={{width:t[1]}}/></em></div>)}</section>
-        <section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button onClick={()=>setPage("new")}><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section>
+        <section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button onClick={()=>setPage("new")}><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button onClick={()=>setPage("rates")}><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section>
       </div>
     </section>
   </main>
