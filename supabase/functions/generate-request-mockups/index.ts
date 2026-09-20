@@ -11,7 +11,9 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || "";
 const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN") || "";
-const cloudflareModel = "@cf/black-forest-labs/flux-2-dev";
+const cloudflarePrimaryModel = "@cf/black-forest-labs/flux-2-dev";
+const cloudflareFastModel = "@cf/black-forest-labs/flux-2-klein-4b";
+const cloudflareEmergencyModel = "@cf/black-forest-labs/flux-1-schnell";
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -64,6 +66,43 @@ function makePrompt(slot: string, request: any) {
   ].join("\n\n");
 }
 
+async function fetchCloudflare(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("TIMEOUT"), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function parseImageResponse(response: Response, provider: string) {
+  const detail = await response.text();
+  if (!response.ok) {
+    let parsed: any = null;
+    try { parsed = JSON.parse(detail); } catch {}
+    const cloudflareCode = parsed?.errors?.[0]?.code || "";
+    throw new Error(
+      provider +
+      " " +
+      response.status +
+      (cloudflareCode ? " (" + cloudflareCode + ")" : "") +
+      ": " +
+      detail.slice(0, 1800),
+    );
+  }
+
+  let payload: any = null;
+  try { payload = JSON.parse(detail); } catch {}
+  const b64 = payload?.result?.image;
+  if (!b64) throw new Error(provider + " returned no image data.");
+  return Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
+}
+
 async function generateImage(prompt: string) {
   if (!cloudflareAccountId || !cloudflareApiToken) {
     const error = new Error("CLOUDFLARE_NOT_CONFIGURED");
@@ -71,9 +110,17 @@ async function generateImage(prompt: string) {
     throw error;
   }
 
-  let lastError = "Unknown Cloudflare Workers AI error.";
+  const endpoint = (model: string) =>
+    "https://api.cloudflare.com/client/v4/accounts/" +
+    encodeURIComponent(cloudflareAccountId) +
+    "/ai/run/" +
+    model;
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  const errors: string[] = [];
+
+  // Primary: highest-quality model. Its official docs note that it is slower than
+  // other Workers AI image models, so keep a hard timeout and fall back cleanly.
+  try {
     const form = new FormData();
     form.append("prompt", prompt);
     form.append("steps", "4");
@@ -81,106 +128,86 @@ async function generateImage(prompt: string) {
     form.append("height", "768");
     form.append("guidance", "3.5");
 
-    const response = await fetch(
-      "https://api.cloudflare.com/client/v4/accounts/" +
-        encodeURIComponent(cloudflareAccountId) +
-        "/ai/run/" +
-        cloudflareModel,
+    const response = await fetchCloudflare(
+      endpoint(cloudflarePrimaryModel),
+      { method: "POST", headers: { Authorization: "Bearer " + cloudflareApiToken }, body: form },
+      45000,
+    );
+    return await parseImageResponse(response, "Cloudflare FLUX.2 dev");
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
+  }
+
+  // Fast quality fallback: FLUX.2 klein 4B uses the same multipart REST shape
+  // and is explicitly optimized for faster generation.
+  try {
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("width", "1024");
+    form.append("height", "768");
+    form.append("guidance", "3.5");
+
+    const response = await fetchCloudflare(
+      endpoint(cloudflareFastModel),
+      { method: "POST", headers: { Authorization: "Bearer " + cloudflareApiToken }, body: form },
+      30000,
+    );
+    return await parseImageResponse(response, "Cloudflare FLUX.2 klein 4B");
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
+  }
+
+  // Emergency fallback: FLUX.1 schnell has a simple JSON REST API and is cheap/free-plan friendly.
+  // Keep the compact prompt below its documented 2048-character limit.
+  try {
+    const compactPrompt = prompt.slice(0, 1900);
+    const response = await fetchCloudflare(
+      endpoint(cloudflareEmergencyModel),
       {
         method: "POST",
         headers: {
           Authorization: "Bearer " + cloudflareApiToken,
+          "Content-Type": "application/json",
         },
-        body: form,
+        body: JSON.stringify({ prompt: compactPrompt, steps: 4 }),
       },
+      25000,
     );
-
-    if (response.ok) {
-      const payload = await response.json();
-      const b64 = payload?.result?.image;
-      if (!b64) {
-        throw new Error("Cloudflare Workers AI returned no image data.");
-      }
-      return Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
-    }
-
-    const detail = await response.text();
-    let parsed: any = null;
-    try { parsed = JSON.parse(detail); } catch {}
-    const cloudflareCode = parsed?.errors?.[0]?.code || "";
-    lastError =
-      "Cloudflare Workers AI " +
-      response.status +
-      (cloudflareCode ? " (" + cloudflareCode + ")" : "") +
-      ": " +
-      detail.slice(0, 1800);
-
-    if (response.status !== 429 && response.status < 500) break;
-    await new Promise((resolve) => setTimeout(resolve, 900 * attempt));
+    return await parseImageResponse(response, "Cloudflare FLUX.1 schnell");
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
   }
 
-  throw new Error(lastError);
+  throw new Error(errors.join("\n\n"));
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  if (!serviceRoleKey) {
-    return json({ error: "SUPABASE_SERVICE_ROLE_KEY is not configured." }, 503);
-  }
-
-  const authHeader = req.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return json({ error: "Unauthorized" }, 401);
-  }
-
-  const userToken = authHeader.slice("Bearer ".length);
-  let userId = "";
-  try {
-    const payload = userToken.split(".")[1]
-      .replaceAll("-", "+")
-      .replaceAll("_", "/");
-    userId = String(JSON.parse(atob(payload.padEnd(payload.length + (4 - payload.length % 4) % 4, "="))).sub || "");
-  } catch {
-    return json({ error: "Unauthorized" }, 401);
-  }
-  if (!userId) return json({ error: "Unauthorized" }, 401);
-
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid JSON body" }, 400);
-  }
-
-  const requestId = String(body.requestId || "").trim();
-  if (!requestId) return json({ error: "requestId is required" }, 400);
-
-  const { data: request, error: requestError } = await admin
-    .from("client_requests")
-    .select("id,owner_id,project_name,client_name,type,description,features,flags,analysis")
-    .eq("id", requestId)
-    .maybeSingle();
-
-  if (requestError) return json({ error: requestError.message }, 500);
-  if (!request) return json({ error: "Request not found" }, 404);
-  if (request.owner_id !== userId) return json({ error: "Forbidden" }, 403);
-
+async function runGeneration(request: any, userId: string) {
   const slots = ["overview", "core", "admin", "mobile"];
+  const generated: any[] = [];
 
-  try {
-    const generated = [];
-    await admin
-      .from("client_requests")
-      .update({ mockups: [], mockups_status: "generating", mockups_error: null })
-      .eq("id", request.id);
+  await admin
+    .from("client_requests")
+    .update({ mockups: [], mockups_status: "generating", mockups_error: null })
+    .eq("id", request.id);
 
-    for (let index = 0; index < slots.length; index += 1) {
-      const slot = slots[index];
+  // Run two images at a time. This is much faster than four fully sequential
+  // calls while still avoiding an aggressive burst against Workers AI.
+  for (let start = 0; start < slots.length; start += 2) {
+    const batch = slots.slice(start, start + 2);
+    const results = await Promise.all(
+      batch.map(async (slot, offset) => {
         const bytes = await generateImage(makePrompt(slot, request));
         const timestamp = Date.now();
-        const path = userId + "/" + request.id + "/" + timestamp + "-" + index + ".jpg";
+        const path =
+          userId +
+          "/" +
+          request.id +
+          "/" +
+          timestamp +
+          "-" +
+          (start + offset) +
+          ".jpg";
+
         const upload = await admin.storage
           .from("request-mockups")
           .upload(path, bytes, {
@@ -205,28 +232,99 @@ Deno.serve(async (req) => {
           mobile: "Responsive mobile interpretation of the core experience.",
         };
 
-      generated.push({
-        slot,
-        title: titles[slot],
-        description: descriptions[slot],
-        path,
-        generatedAt: new Date().toISOString(),
-      });
+        return {
+          slot,
+          title: titles[slot],
+          description: descriptions[slot],
+          path,
+          generatedAt: new Date().toISOString(),
+        };
+      }),
+    );
 
-      await admin
-        .from("client_requests")
-        .update({ mockups: generated, mockups_status: "generating", mockups_error: null })
-        .eq("id", request.id);
-    }
+    generated.push(...results);
 
     await admin
       .from("client_requests")
-      .update({ mockups: generated, mockups_status: "ready", mockups_error: null })
+      .update({
+        mockups: generated,
+        mockups_status: "generating",
+        mockups_error: null,
+      })
       .eq("id", request.id);
+  }
 
+  await admin
+    .from("client_requests")
+    .update({
+      mockups: generated,
+      mockups_status: "ready",
+      mockups_error: null,
+    })
+    .eq("id", request.id);
+
+  return generated;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  if (!serviceRoleKey) {
+    return json({ error: "SUPABASE_SERVICE_ROLE_KEY is not configured." }, 503);
+  }
+
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
+  const userToken = authHeader.slice("Bearer ".length);
+  let userId = "";
+  try {
+    const payload = userToken.split(".")[1]
+      .replaceAll("-", "+")
+      .replaceAll("_", "/");
+    userId = String(
+      JSON.parse(
+        atob(payload.padEnd(payload.length + (4 - payload.length % 4) % 4, "=")),
+      ).sub || "",
+    );
+  } catch {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
+  if (!userId) return json({ error: "Unauthorized" }, 401);
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const requestId = String(body.requestId || "").trim();
+  if (!requestId) return json({ error: "requestId is required" }, 400);
+
+  const { data: request, error: requestError } = await admin
+    .from("client_requests")
+    .select("id,owner_id,project_name,client_name,type,description,features,flags,analysis")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (requestError) return json({ error: requestError.message }, 500);
+  if (!request) return json({ error: "Request not found" }, 404);
+  if (request.owner_id !== userId) return json({ error: "Forbidden" }, 403);
+
+  try {
+    const generated = await runGeneration(request, userId);
     return json({ ok: true, mockups: generated });
   } catch (error) {
-    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code || "") : "";
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: string }).code || "")
+        : "";
+
     const message =
       code === "CLOUDFLARE_NOT_CONFIGURED"
         ? "Cloudflare Workers AI is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to Supabase secrets."
@@ -234,13 +332,19 @@ Deno.serve(async (req) => {
 
     await admin
       .from("client_requests")
-      .update({ mockups_status: "error", mockups_error: message.slice(0, 2500) })
+      .update({
+        mockups_status: "error",
+        mockups_error: message.slice(0, 2500),
+      })
       .eq("id", request.id);
 
-    return json({
-      ok: false,
-      code: code || "MOCKUP_GENERATION_FAILED",
-      error: message,
-    }, 200);
+    return json(
+      {
+        ok: false,
+        code: code || "MOCKUP_GENERATION_FAILED",
+        error: message,
+      },
+      200,
+    );
   }
 });
