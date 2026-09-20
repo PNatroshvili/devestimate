@@ -6,6 +6,7 @@ import NewProject from "./NewProject";
 import PricingRates from "./PricingRates";
 import Projects from "./Projects";
 import ProjectDetail from "./ProjectDetail";
+import Templates from "./Templates";
 import { StoredProject } from "../lib/projects";
 
 const projects = [
@@ -17,7 +18,7 @@ const projects = [
 ];
 const tech = [["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Node.js","15%"],["Others","17%"]];
 
-type Page = "dashboard" | "new" | "rates" | "projects" | "detail";
+type Page = "dashboard" | "new" | "rates" | "projects" | "detail" | "templates";
 
 function Status({v}:{v:string}){return <span className={"status "+v.toLowerCase().replaceAll(" ","-")}>{v}</span>}
 
@@ -31,6 +32,7 @@ export default function Dashboard(){
     if(page==="new") return <NewProject onBack={()=>setPage("dashboard")}/>;
     if(page==="rates") return <PricingRates onBack={()=>setPage("dashboard")}/>;
     if(page==="projects") return <Projects onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")} onOpen={openProject}/>;
+    if(page==="templates") return <Templates onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")}/>;
     if(page==="detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={()=>setPage("projects")}/>;
     return <DashboardHome onNew={()=>setPage("new")} onProjects={()=>setPage("projects")} onRates={()=>setPage("rates")}/>;
   };
@@ -42,7 +44,7 @@ export default function Dashboard(){
         <a className={page==="dashboard" ? "active" : ""} onClick={()=>setPage("dashboard")}><LayoutDashboard/>Dashboard</a>
         <a className={page==="new" ? "active" : ""} onClick={()=>setPage("new")}><Plus/>New Project</a>
         <a className={page==="projects" || page==="detail" ? "active" : ""} onClick={()=>setPage("projects")}><FolderKanban/>Projects</a>
-        <a><FileText/>Templates</a>
+        <a className={page==="templates" ? "active" : ""} onClick={()=>setPage("templates")}><FileText/>Templates</a>
         <a className={page==="rates" ? "active" : ""} onClick={()=>setPage("rates")}><CircleDollarSign/>Pricing & Rates</a>
         <a><BookOpen/>Knowledge Base</a>
         <a><BarChart3/>Analytics</a>
