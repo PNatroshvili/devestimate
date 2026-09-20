@@ -65,7 +65,7 @@ export default function Dashboard(){
 
   return <main className="shell">
     <aside className="sidebar">
-      <div className="brand"><b>D</b><span>DevEstimate</span></div>
+      <div className="brand"><img src="/skup-mark.svg" alt="SKUP Studio" /><span>SKUP Studio</span></div>
       <nav>
         <a className={page==="dashboard" ? "active" : ""} onClick={()=>setPage("dashboard")}><LayoutDashboard/>Dashboard</a>
         <a className={page==="new" ? "active" : ""} onClick={()=>setPage("new")}><Plus/>New Project</a>
@@ -79,7 +79,7 @@ export default function Dashboard(){
       </nav>
       <div className="bottom">
         <div className="ai"><Sparkles/><div><strong>AI Estimator</strong><small>{isSupabaseConfigured ? "Private workspace connected." : "Local prototype mode."}</small></div></div>
-        <div className="user"><i>D</i><div><strong>Developer</strong><small>Full Stack</small></div>{isSupabaseConfigured && <button className="signout" title="Sign out" onClick={signOut}><LogOut/></button>}</div>
+        <div className="user"><i>D</i><div><strong>SKUP Studio</strong><small>Private workspace</small></div>{isSupabaseConfigured && <button className="signout" title="Sign out" onClick={signOut}><LogOut/></button>}</div>
       </div>
     </aside>
     {renderPage()}
