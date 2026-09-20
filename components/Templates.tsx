@@ -20,7 +20,7 @@ export default function Templates({onBack,onNew}:{onBack:()=>void;onNew:()=>void
   return <section className="content templates-page">
     <header><div className="np-header-spacer"/><div className="np-save">{projectTemplates.length} starter templates</div></header>
     <div className="templates-top">
-      <div><button className="back-link" onClick={onBack}><ArrowLeft/> Back to dashboard</button><small>TEMPLATES</small><h1>Project Templates</h1><p>Start from a proven structure and let DevEstimate refine the scope.</p></div>
+      <div><button className="back-link" onClick={onBack}><ArrowLeft/> Back to dashboard</button><small>TEMPLATES</small><h1>Project Templates</h1><p>Start from a proven structure and let SKUP Studio refine the scope.</p></div>
       <button className="primary" onClick={onNew}><Plus/> Blank Project</button>
     </div>
     <div className="template-toolbar">
