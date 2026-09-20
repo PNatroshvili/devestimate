@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Copy, Link2, Loader2, MessageSquareText, RefreshCw, Sparkles, Wand2, X } from "lucide-react";
+import { ClipboardList, Copy, Image as ImageIcon, Link2, Loader2, Maximize2, RefreshCw, Sparkles, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeClientRequestWithAI,
@@ -10,8 +10,11 @@ import {
   loadClientRequests,
   loadRequestLinks,
   generateClientMessageWithAI,
+  generateRequestMockupsWithAI,
+  signRequestMockupUrls,
   updateClientMessage,
   updateClientRequestAnalysis,
+  RequestMockup,
 } from "../lib/clientRequests";
 import { loadRates, priceEstimate } from "../lib/pricing";
 import { isSupabaseConfigured } from "../lib/supabase";
@@ -178,16 +181,30 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
         </aside>
       </div>
 
-      {selected && <RequestDetailModal request={selected} onClose={() => setSelected(null)} onMessageSaved={(message) => {
-        const next = { ...selected, clientMessage: message };
-        setSelected(next);
-        setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
-      }} />}
+      {selected && <RequestDetailModal
+        request={selected}
+        onClose={() => setSelected(null)}
+        onMessageSaved={(message) => {
+          const next = { ...selected, clientMessage: message };
+          setSelected(next);
+          setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
+        }}
+        onMockupsSaved={(mockups) => {
+          const next = { ...selected, mockups };
+          setSelected(next);
+          setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
+        }}
+      />}
     </section>
   );
 }
 
-function RequestDetailModal({ request, onClose, onMessageSaved }: { request: ClientRequest; onClose: () => void; onMessageSaved: (message: string) => void }) {
+function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }: {
+  request: ClientRequest;
+  onClose: () => void;
+  onMessageSaved: (message: string) => void;
+  onMockupsSaved: (mockups: RequestMockup[]) => void;
+}) {
   const analysis = request.analysis;
   const rates = loadRates();
   const price = analysis ? priceEstimate(analysis.hours, request.type, rates, 1 + (analysis.complexity - 5) * 0.04) : null;
@@ -199,6 +216,39 @@ function RequestDetailModal({ request, onClose, onMessageSaved }: { request: Cli
   const [messageCopied, setMessageCopied] = useState(false);
   const [messageError, setMessageError] = useState("");
   const [messageReady, setMessageReady] = useState(Boolean(request.clientMessage));
+  const [mockups, setMockups] = useState<RequestMockup[]>(request.mockups || []);
+  const [mockupLoading, setMockupLoading] = useState(false);
+  const [mockupError, setMockupError] = useState("");
+
+  const generateMockups = async () => {
+    setMockupLoading(true);
+    setMockupError("");
+    try {
+      const next = await generateRequestMockupsWithAI(request.id);
+      setMockups(next);
+      onMockupsSaved(next);
+    } catch (error) {
+      setMockupError(error instanceof Error ? error.message : "მოქაფების გენერირება ვერ მოხერხდა.");
+    } finally {
+      setMockupLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    const hydrate = async () => {
+      if (!request.mockups?.length) {
+        setMockups([]);
+        if (!mockupLoading && analysis) void generateMockups();
+        return;
+      }
+      const signed = await signRequestMockupUrls(request.mockups);
+      if (alive) setMockups(signed);
+    };
+    void hydrate();
+    return () => { alive = false; };
+  }, [request.id]);
+
 
     const flags = [
     ["Authentication", "ავტორიზაცია და მომხმარებლები"],
@@ -430,6 +480,69 @@ ${budgetNote}
                 <div className="request-groups">{analysis.milestones.map((item, index) => <div key={item}><strong>{String(index + 1).padStart(2, "0")}</strong><span>{item}</span></div>)}</div>
               </div>
             ) : null}
+          </section>
+
+
+          <section className="request-modal-section request-visual-section">
+            <div className="request-modal-section-head">
+              <span>07</span>
+              <div>
+                <h3>AI ვიზუალური მოქაფები</h3>
+                <p>რექუესთის სრული ფუნქციონალი, ტექნოლოგიური სტეკი და AI დასკვნა გარდაიქმნება 4 პრაქტიკულ UI/UX კონცეფციად.</p>
+              </div>
+            </div>
+
+            <div className="request-visual-toolbar">
+              <div>
+                <strong>{mockups.length ? "ვიზუალური კონცეფცია მზად არის" : "ვიზუალური კონცეფცია ჯერ არ შექმნილა"}</strong>
+                <span>Overview • Core workflow • Admin • Mobile</span>
+              </div>
+              <button className="secondary" onClick={() => void generateMockups()} disabled={mockupLoading || !analysis}>
+                <ImageIcon />
+                {mockupLoading ? "იქმნება 4 მოქაფი..." : mockups.length ? "თავიდან გენერირება" : "4 მოქაფის გენერირება"}
+              </button>
+            </div>
+
+            {mockupError && <div className="request-client-message-error">{mockupError}</div>}
+
+            {mockupLoading && !mockups.length ? (
+              <div className="request-mockup-grid">
+                {[1,2,3,4].map((item) => (
+                  <div className="request-mockup-skeleton" key={item}>
+                    <div className="request-mockup-skeleton-image" />
+                    <div className="request-mockup-skeleton-line wide" />
+                    <div className="request-mockup-skeleton-line" />
+                  </div>
+                ))}
+              </div>
+            ) : mockups.length ? (
+              <div className="request-mockup-grid">
+                {mockups.map((mockup) => (
+                  <a
+                    key={mockup.path}
+                    className="request-mockup-card"
+                    href={mockup.url || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {mockup.url ? <img src={mockup.url} alt={mockup.title} /> : <div className="request-mockup-missing">Preview unavailable</div>}
+                    <div className="request-mockup-overlay">
+                      <div>
+                        <strong>{mockup.title}</strong>
+                        <span>{mockup.description}</span>
+                      </div>
+                      <Maximize2 />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="request-mockup-empty">
+                <ImageIcon />
+                <strong>4 მაღალი ხარისხის UI/UX მოქაფი მზადდება ამ რექუესთიდან.</strong>
+                <span>გენერაცია იყენებს მოთხოვნას, AI ტექნოლოგიურ რეკომენდაციებს, მოდულებს, არქიტექტურას და ძირითად რისკებს.</span>
+              </div>
+            )}
           </section>
 
           <section className="request-modal-section">
