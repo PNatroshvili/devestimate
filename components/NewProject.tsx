@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, Globe, Smartphone, Store, Layers3, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Check, Code2, CircleGauge, Clock3, DollarSign, Globe, Smartphone, Store, Layers3, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
 type ProjectType = "Web" | "Mobile" | "WordPress" | "Hybrid";
@@ -13,6 +13,40 @@ const types: { id: ProjectType; title: string; description: string; icon: typeof
 ];
 
 const steps = ["Project Basics", "Requirements", "Scope & Estimate", "Review"];
+
+
+function buildAnalysis(type: ProjectType, description: string, features: string[], flags: string[]) {
+  const base = { Web: 28, Mobile: 42, WordPress: 18, Hybrid: 58 }[type];
+  const featureHours = features.length * 6;
+  const flagHours = flags.length * 7;
+  const keywordBonus = /ecommerce|booking|marketplace|subscription|dashboard|multivendor/i.test(description) ? 12 : 0;
+  const hours = Math.round((base + featureHours + flagHours + keywordBonus) / 4) * 4;
+  const complexity = Math.min(10, Math.max(2, Math.round((base / 10) + features.length * .45 + flags.length * .4 + keywordBonus / 10)));
+  const missing = [
+    !flags.includes("Authentication") && "User roles & authentication",
+    !flags.includes("Admin panel") && "Admin / content management scope",
+    !flags.includes("Notifications") && "Notification channels and triggers",
+    !flags.includes("External API") && "Third-party integrations / API scope",
+    !flags.includes("Payments") && /shop|store|booking|subscription|payment|checkout/i.test(description) && "Payment provider and refund rules",
+    !flags.includes("SEO / Analytics") && type !== "Mobile" && "SEO, analytics and conversion tracking",
+    "Hosting, deployment and domain requirements",
+    "Acceptance criteria and post-launch support",
+  ].filter(Boolean) as string[];
+  const stack = type === "WordPress"
+    ? ["WordPress", "WooCommerce (if commerce)", "ACF / custom fields", "Custom theme", "Managed hosting"]
+    : type === "Mobile"
+      ? ["React Native", "Expo", "Node.js API", "PostgreSQL", "Push notifications"]
+      : type === "Hybrid"
+        ? ["Next.js", "React Native / Expo", "Node.js", "PostgreSQL", "REST API"]
+        : ["Next.js", "TypeScript", "Node.js", "PostgreSQL", "REST API"];
+  const groups = [
+    { name: "Core product", count: Math.max(2, features.length || 3), hours: Math.round((base * .42 + featureHours * .45) / 4) * 4 },
+    { name: "Backend & integrations", count: Math.max(1, flags.filter(x => ["Payments","External API","Notifications"].includes(x)).length), hours: Math.round((base * .25 + flagHours * .35) / 4) * 4 },
+    { name: "Admin & content", count: flags.includes("Admin panel") ? 1 : 0, hours: flags.includes("Admin panel") ? 16 : 8 },
+    { name: "QA & deployment", count: 2, hours: Math.round((base * .18 + 8) / 4) * 4 },
+  ].filter(x => x.count > 0);
+  return { hours, complexity, missing, stack, groups };
+}
 
 export default function NewProject({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState(0);
@@ -31,6 +65,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   const [api, setApi] = useState(false);
   const [seo, setSeo] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const addFeature = () => {
     const value = featureInput.trim();
@@ -41,6 +76,10 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   };
 
   const removeFeature = (item: string) => setFeatures(features.filter((x) => x !== item));
+  const flags = [auth && "Authentication", payments && "Payments", admin && "Admin panel", notifications && "Notifications", api && "External API", seo && "SEO / Analytics"].filter(Boolean) as string[];
+  const analysis = buildAnalysis(type, description, features, flags);
+
+  if (submitted && analysisOpen) return <AnalysisScreen name={name} client={client} type={type} analysis={analysis} flags={flags} onBack={() => setAnalysisOpen(false)} />;
 
   const canNext = step === 0 ? Boolean(name.trim() && description.trim()) : true;
 
@@ -51,7 +90,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
           <div className="success-icon"><Check /></div>
           <small>PROJECT CREATED</small>
           <h1>{name || "New Project"}</h1>
-          <p>The project brief is ready for AI analysis. Next we can connect the requirements analyzer and estimation engine.</p>
+          <p>The brief has been structured and the first-pass estimation engine is ready.</p>
           <div className="success-grid">
             <div><span>Type</span><b>{type}</b></div>
             <div><span>Features</span><b>{features.length || "Not added"}</b></div>
@@ -60,7 +99,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
           </div>
           <div className="success-actions">
             <button className="secondary" onClick={onBack}>Back to Dashboard</button>
-            <button className="primary" onClick={() => setSubmitted(false)}><Sparkles /> Open AI Analysis</button>
+            <button className="primary" onClick={() => setAnalysisOpen(true)}><Sparkles /> Open AI Analysis</button>
           </div>
         </div>
       </section>
@@ -187,3 +226,50 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
 function Review({ label, value }: { label: string; value: string }) {
   return <div className="review-row"><span>{label}</span><strong>{value}</strong></div>;
 }
+
+function AnalysisScreen({ name, client, type, analysis, flags, onBack }: {
+  name: string; client: string; type: ProjectType; analysis: ReturnType<typeof buildAnalysis>; flags: string[]; onBack: () => void;
+}) {
+  const [tab, setTab] = useState<"overview" | "questions">("overview");
+  const estimatedValue = analysis.hours * 45;
+  return <section className="content new-project-page analysis-page">
+    <header><div className="np-header-spacer" /><div className="np-save">Analysis engine · v1</div></header>
+    <div className="analysis-top">
+      <button className="back-link" onClick={onBack}><ArrowLeft /> Back to project</button>
+      <small>AI REQUIREMENTS ANALYSIS</small><h1>{name}</h1><p>{client || "Internal estimate"} · {type}</p>
+    </div>
+    <div className="analysis-stats">
+      <div><Clock3/><span>Estimated hours</span><strong>{analysis.hours}h</strong></div>
+      <div><CircleGauge/><span>Complexity</span><strong>{analysis.complexity}/10</strong></div>
+      <div><DollarSign/><span>Draft value</span><strong>{"$" + estimatedValue.toLocaleString()}</strong></div>
+      <div><Code2/><span>Recommended stack</span><strong>{analysis.stack[0]}</strong></div>
+    </div>
+    <div className="analysis-tabs">
+      <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>Analysis Overview</button>
+      <button className={tab === "questions" ? "active" : ""} onClick={() => setTab("questions")}>Missing Requirements <b>{analysis.missing.length}</b></button>
+    </div>
+    {tab === "overview" ? <div className="analysis-grid">
+      <div className="np-card"><div className="np-card-head"><div><h2>Feature breakdown</h2><p>First-pass scope grouping</p></div><span>{analysis.groups.length} groups</span></div>
+        {analysis.groups.map(group => <div className="analysis-group" key={group.name}><div><strong>{group.name}</strong><small>{group.count} scope item{group.count === 1 ? "" : "s"}</small></div><b>{group.hours}h</b></div>)}
+      </div>
+      <div className="np-card"><div className="np-card-head"><div><h2>Recommended technology</h2><p>Based on project type and brief</p></div><span>STACK</span></div>
+        <div className="stack-list">{analysis.stack.map((item, i) => <div key={item}><span>{String(i + 1).padStart(2,"0")}</span><strong>{item}</strong><small>{i === 0 ? "Primary application layer" : "Supporting technology"}</small></div>)}</div>
+      </div>
+      <div className="np-card"><div className="np-card-head"><div><h2>Complexity signals</h2><p>What is driving the estimate</p></div><span>{analysis.complexity}/10</span></div>
+        <div className="signal-list"><Signal label="Project type" value={type} /><Signal label="Known features" value={String(flags.length)} /><Signal label="Scope flags" value={String(flags.length)} /><Signal label="Description signal" value={analysis.complexity >= 7 ? "High" : analysis.complexity >= 5 ? "Medium" : "Low"} /></div>
+      </div>
+      <div className="np-card"><div className="np-card-head"><div><h2>Estimation note</h2><p>Commercial output before pricing rules</p></div><span>PREVIEW</span></div>
+        <div className="estimate-preview"><div><span>Hours</span><strong>{analysis.hours}h</strong></div><div><span>Draft hourly rate</span><strong>$45/h</strong></div><div><span>Draft value</span><strong>{"$" + estimatedValue.toLocaleString()}</strong></div></div>
+        <div className="analysis-warning"><AlertTriangle/><span>This is a first-pass estimate. Final pricing will use your configured rates, minimums, urgency and maintenance rules.</span></div>
+      </div>
+    </div> : <div className="np-card missing-card">
+      <div className="np-card-head"><div><h2>Questions before pricing</h2><p>These items can materially change scope or hours.</p></div><span>{analysis.missing.length} open</span></div>
+      {analysis.missing.map((item, i) => <div className="missing-row" key={item}><span>{String(i+1).padStart(2,"0")}</span><div><strong>{item}</strong><small>Clarify this with the client before final proposal.</small></div><AlertTriangle/></div>)}
+    </div>}
+  </section>;
+}
+
+function Signal({ label, value }: { label: string; value: string }) {
+  return <div className="signal-row"><span>{label}</span><strong>{value}</strong></div>;
+}
+
