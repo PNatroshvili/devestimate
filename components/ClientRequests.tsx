@@ -21,7 +21,7 @@ import { isSupabaseConfigured } from "../lib/supabase";
 import { formatLearningMode, getLearningSignal } from "../lib/learning";
 import { loadProjects } from "../lib/projects";
 
-export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: () => void; requestIdFromUrl?: string | null }) {
+export default function ClientRequests({ onBack, requestIdFromUrl, standalone = false }: { onBack: () => void; requestIdFromUrl?: string | null; standalone?: boolean }) {
   const [links, setLinks] = useState<ClientRequestLink[]>([]);
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [label, setLabel] = useState("");
@@ -125,6 +125,28 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
     window.setTimeout(() => setCopied(false), 1600);
   };
 
+  if (standalone && selected) {
+    return (
+      <section className="content request-page request-detail-route">
+        <RequestDetailModal
+          request={selected}
+          standalone
+          onClose={onBack}
+          onMessageSaved={(message) => {
+            const next = { ...selected, clientMessage: message };
+            setSelected(next);
+            setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
+          }}
+          onMockupsSaved={(mockups) => {
+            const next = { ...selected, mockups };
+            setSelected(next);
+            setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
+          }}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="content request-page">
       <header><div className="np-header-spacer" /><div className="np-save">{isSupabaseConfigured ? "Connected workspace" : "Local demo mode"}</div></header>
@@ -173,7 +195,7 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
             ) : requests.length ? (
               <div className="request-list">
                 {requests.map((request) => (
-                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => setSelected(request)}>
+                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => { window.location.href = "/requests/?id=" + encodeURIComponent(request.id); }}>
                     <div className="request-icon"><ClipboardList /></div>
                     <div className="request-row-main"><strong>{request.projectName}</strong><small>{request.clientName}{request.company ? " · " + request.company : ""} · {request.type}</small></div>
                     <div className="request-row-meta"><span>{new Date(request.createdAt).toLocaleDateString("ka-GE")}</span><b>{request.status}</b></div>
@@ -215,9 +237,10 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
   );
 }
 
-function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }: {
+function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved, standalone = false }: {
   request: ClientRequest;
   onClose: () => void;
+  standalone?: boolean;
   onMessageSaved: (message: string) => void;
   onMockupsSaved: (mockups: RequestMockup[]) => void;
 }) {
@@ -418,8 +441,8 @@ ${budgetNote}
   }, [onClose]);
 
   return (
-    <div className="request-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div className="request-modal" role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
+    <div className={"request-modal-backdrop " + (standalone ? "request-detail-backdrop" : "")} onMouseDown={(event) => { if (!standalone && event.target === event.currentTarget) onClose(); }}>
+      <div className={"request-modal " + (standalone ? "request-detail-card" : "")} role="dialog" aria-modal="true" aria-labelledby="request-modal-title">
         <header className="request-modal-head">
           <div>
             <small>სრული მოთხოვნა • INTERNAL REVIEW</small>
@@ -563,8 +586,8 @@ ${budgetNote}
             <div className="request-modal-section-head">
               <span>07</span>
               <div>
-                <h3>AI ვიზუალური მოქაფები</h3>
-                <p>რექუესთის სრული ფუნქციონალი, ტექნოლოგიური სტეკი და AI დასკვნა გარდაიქმნება 4 პრაქტიკულ UI/UX კონცეფციად.</p>
+                <h3>Hybrid UI მოქაფები</h3>
+                <p>სტრუქტურული UI კომპონენტები და ვიზუალური asset layer ერთიანდება 4 პრაქტიკულ UI/UX კონცეფციად.</p>
               </div>
             </div>
 
@@ -602,7 +625,7 @@ ${budgetNote}
                 </div>
                 <div className="request-mockup-progress-meta">
                   <span>{Math.min(mockups.length, 4)} / 4 მოქაფი მზადაა</span>
-                  <span>AI მუშაობს პროექტის სრული მოთხოვნის მიხედვით</span>
+                  <span>Hybrid renderer იყენებს პროექტის სტრუქტურასა და ვიზუალურ asset layer-ს</span>
                 </div>
               </div>
             )}
