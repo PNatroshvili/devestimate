@@ -7,6 +7,7 @@ import PricingRates from "./PricingRates";
 import Projects from "./Projects";
 import ProjectDetail from "./ProjectDetail";
 import Templates from "./Templates";
+import Analytics from "./Analytics";
 import { StoredProject } from "../lib/projects";
 
 const projects = [
@@ -18,7 +19,7 @@ const projects = [
 ];
 const tech = [["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Node.js","15%"],["Others","17%"]];
 
-type Page = "dashboard" | "new" | "rates" | "projects" | "detail" | "templates";
+type Page = "dashboard" | "new" | "rates" | "projects" | "detail" | "templates" | "analytics";
 
 function Status({v}:{v:string}){return <span className={"status "+v.toLowerCase().replaceAll(" ","-")}>{v}</span>}
 
@@ -33,8 +34,9 @@ export default function Dashboard(){
     if(page==="rates") return <PricingRates onBack={()=>setPage("dashboard")}/>;
     if(page==="projects") return <Projects onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")} onOpen={openProject}/>;
     if(page==="templates") return <Templates onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")}/>;
+    if(page==="analytics") return <Analytics onBack={()=>setPage("dashboard")}/>;
     if(page==="detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={()=>setPage("projects")}/>;
-    return <DashboardHome onNew={()=>setPage("new")} onProjects={()=>setPage("projects")} onRates={()=>setPage("rates")}/>;
+    return <DashboardHome onNew={()=>setPage("new")} onProjects={()=>setPage("projects")} onRates={()=>setPage("rates")} onAnalytics={()=>setPage("analytics")}/>;
   };
 
   return <main className="shell">
@@ -47,7 +49,7 @@ export default function Dashboard(){
         <a className={page==="templates" ? "active" : ""} onClick={()=>setPage("templates")}><FileText/>Templates</a>
         <a className={page==="rates" ? "active" : ""} onClick={()=>setPage("rates")}><CircleDollarSign/>Pricing & Rates</a>
         <a><BookOpen/>Knowledge Base</a>
-        <a><BarChart3/>Analytics</a>
+        <a className={page==="analytics" ? "active" : ""} onClick={()=>setPage("analytics")}><BarChart3/>Analytics</a>
         <a><Settings/>Settings</a>
       </nav>
       <div className="bottom">
@@ -59,7 +61,7 @@ export default function Dashboard(){
   </main>
 }
 
-function DashboardHome({onNew,onProjects,onRates}:{onNew:()=>void;onProjects:()=>void;onRates:()=>void}){
+function DashboardHome({onNew,onProjects,onRates,onAnalytics}:{onNew:()=>void;onProjects:()=>void;onRates:()=>void;onAnalytics:()=>void}){
   return <section className="content">
     <header><div className="search"><Search/><input placeholder="Search projects..."/></div><button className="bell"><Bell/></button><i className="mini">D</i></header>
     <div className="heading"><div><small>OVERVIEW</small><h1>Dashboard</h1><p>Turn ideas into organized plans.</p></div><button className="primary" onClick={onNew}><Plus/>New Project</button></div>
@@ -68,7 +70,7 @@ function DashboardHome({onNew,onProjects,onRates}:{onNew:()=>void;onProjects:()=
       <section className="panel projects"><div className="panelhead"><div><h2>Recent Projects</h2><small>Latest estimation activity</small></div><button onClick={onProjects}>View All</button></div>{projects.map(p=><div className="project" key={p[0]}><i>{p[5]}</i><div><strong>{p[0]}</strong><small>{p[1]}</small></div><Status v={p[2]}/><div className="value"><strong>{p[3]}</strong><small>{p[4]}</small></div></div>)}</section>
       <section className="panel chartpanel"><Head title="Project Value" sub="Estimated value over time"/><div className="chart"><div className="labels"><span>$8k</span><span>$6k</span><span>$4k</span><span>$2k</span><span>$0</span></div><div className="chartarea"><span/><span/><span/><span/><svg viewBox="0 0 520 190" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#5b7cff" stopOpacity=".25"/><stop offset="1" stopColor="#5b7cff" stopOpacity="0"/></linearGradient></defs><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20L520 190L0 190Z" fill="url(#g)"/><path d="M0 165L65 145L130 152L195 112L260 125L325 83L390 92L455 42L520 20" fill="none" stroke="#5b7cff" strokeWidth="3"/></svg><div className="months"><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div></div></div></section>
       <section className="panel tech"><Head title="Top Technologies" sub="By project count"/>{tech.map(t=><div className="t" key={t[0]}><div><span>{t[0]}</span><b>{t[1]}</b></div><em><i style={{width:t[1]}}/></em></div>)}</section>
-      <section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button onClick={onNew}><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button onClick={onRates}><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section>
+      <section className="panel actions"><Head title="Quick Actions" sub="Start from where you need"/><div className="actionsgrid"><button onClick={onNew}><Plus/><b>New Project<small>Start a fresh estimate</small></b></button><button><Wrench/><b>Use Template<small>Reuse project structure</small></b></button><button onClick={onAnalytics}><BarChart3/><b>View Analytics<small>Check accuracy</small></b></button><button onClick={onRates}><Settings/><b>Pricing Settings<small>Update your rates</small></b></button></div></section>
     </div>
   </section>
 }
