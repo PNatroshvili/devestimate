@@ -52,21 +52,25 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
           notes: request.notes,
         });
         if (!analysis) continue;
-        const next = { ...request, analysis: { ...analysis, source: "ai" as const } };
+        const next = {
+          ...request,
+          analysis: { ...analysis, source: "ai" as const },
+          mockups: [],
+          mockupStatus: "generating" as const,
+          mockupError: undefined,
+        };
         await updateClientRequestAnalysis(request.id, next.analysis);
         setRequests((current) => current.map((item) => item.id === request.id ? next : item));
         setSelected((current) => current?.id === request.id ? next : current);
 
-        // Visual product concepts are generated automatically after the technical AI analysis.
-        // Keep this asynchronous so the request appears immediately while the mockups render.
         void generateRequestMockupsWithAI(request.id)
           .then((mockups) => {
-            const withMockups = { ...next, mockups };
+            const withMockups = { ...next, mockups, mockupStatus: "ready" as const, mockupError: undefined };
             setRequests((current) => current.map((item) => item.id === request.id ? withMockups : item));
             setSelected((current) => current?.id === request.id ? withMockups : current);
           })
           .catch(() => {
-            // Mockup generation is best-effort; the request and technical analysis remain available.
+            // The Edge Function persists the detailed provider error and partial progress in Supabase.
           });
       } catch {
         // Keep the deterministic analysis as a safe fallback.
@@ -229,17 +233,25 @@ function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }
   const [messageError, setMessageError] = useState("");
   const [messageReady, setMessageReady] = useState(Boolean(request.clientMessage));
   const [mockups, setMockups] = useState<RequestMockup[]>(request.mockups || []);
-  const [mockupLoading, setMockupLoading] = useState(false);
-  const [mockupError, setMockupError] = useState("");
+  const [mockupLoading, setMockupLoading] = useState(request.mockupStatus === "generating");
+  const [mockupStatus, setMockupStatus] = useState<"idle" | "generating" | "ready" | "error">(request.mockupStatus || "idle");
+  const [mockupProgress, setMockupProgress] = useState(request.mockupStatus === "ready" ? 100 : Math.min(92, (request.mockups?.length || 0) * 25 + (request.mockupStatus === "generating" ? 4 : 0)));
+  const [mockupError, setMockupError] = useState(request.mockupError || "");
 
   const generateMockups = async () => {
     setMockupLoading(true);
+    setMockupStatus("generating");
     setMockupError("");
+    setMockupProgress(4);
     try {
       const next = await generateRequestMockupsWithAI(request.id);
       setMockups(next);
+      setMockupStatus("ready");
+      setMockupProgress(100);
       onMockupsSaved(next);
     } catch (error) {
+      setMockupStatus("error");
+      setMockupProgress((current) => current || Math.min(92, mockups.length * 25));
       setMockupError(error instanceof Error ? error.message : "მოქაფების გენერირება ვერ მოხერხდა.");
     } finally {
       setMockupLoading(false);
@@ -248,17 +260,65 @@ function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }
 
   useEffect(() => {
     let alive = true;
+
     const hydrate = async () => {
+      setMockupStatus(request.mockupStatus || "idle");
+      setMockupError(request.mockupError || "");
+
       if (!request.mockups?.length) {
         setMockups([]);
+        setMockupLoading(request.mockupStatus === "generating");
+        setMockupProgress(request.mockupStatus === "ready" ? 100 : Math.min(92, (request.mockups?.length || 0) * 25 + (request.mockupStatus === "generating" ? 4 : 0)));
         return;
       }
+
       const signed = await signRequestMockupUrls(request.mockups);
-      if (alive) setMockups(signed);
+      if (!alive) return;
+      setMockups(signed);
+      setMockupLoading(request.mockupStatus === "generating");
+      setMockupProgress(request.mockupStatus === "ready" ? 100 : Math.min(92, signed.length * 25 + (request.mockupStatus === "generating" ? 4 : 0)));
     };
+
     void hydrate();
+
     return () => { alive = false; };
-  }, [request.id]);
+  }, [request.id, request.mockupStatus, request.mockupError, request.mockups?.length]);
+
+  useEffect(() => {
+    if (request.mockupStatus !== "generating") return;
+
+    let alive = true;
+    const poll = window.setInterval(async () => {
+      try {
+        const nextRequests = await loadClientRequests();
+        const latest = nextRequests.find((item) => item.id === request.id);
+        if (!alive || !latest) return;
+
+        const latestMockups = await signRequestMockupUrls(latest.mockups || []);
+        setMockups(latestMockups);
+        setMockupStatus(latest.mockupStatus || "idle");
+        setMockupError(latest.mockupError || "");
+        if (latest.mockupStatus === "ready") {
+          setMockupProgress(100);
+          setMockupLoading(false);
+          clearInterval(poll);
+        } else if (latest.mockupStatus === "error") {
+          setMockupProgress(Math.min(95, latestMockups.length * 25));
+          setMockupLoading(false);
+          clearInterval(poll);
+        } else {
+          setMockupProgress(Math.min(92, latestMockups.length * 25 + 8));
+        }
+      } catch {
+        // Continue polling without interrupting the in-progress generation.
+      }
+    }, 2000);
+
+    return () => {
+      alive = false;
+      window.clearInterval(poll);
+    };
+  }, [request.id, request.mockupStatus]);
 
 
     const flags = [
@@ -515,6 +575,22 @@ ${budgetNote}
             </div>
 
             {mockupError && <div className="request-client-message-error">{mockupError}</div>}
+
+            {(mockupLoading || mockupStatus === "generating") && (
+              <div className="request-mockup-progress">
+                <div className="request-mockup-progress-top">
+                  <strong>მოქაფები გენერირდება…</strong>
+                  <span>{mockupProgress}%</span>
+                </div>
+                <div className="request-mockup-progress-track">
+                  <i style={{ width: mockupProgress + "%" }} />
+                </div>
+                <div className="request-mockup-progress-meta">
+                  <span>{Math.min(mockups.length, 4)} / 4 მოქაფი მზადაა</span>
+                  <span>AI მუშაობს პროექტის სრული მოთხოვნის მიხედვით</span>
+                </div>
+              </div>
+            )}
 
             {mockupLoading && !mockups.length ? (
               <div className="request-mockup-grid">
