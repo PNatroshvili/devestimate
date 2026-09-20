@@ -3,6 +3,7 @@
 import { ArrowLeft, ArrowRight, AlertTriangle, Check, Code2, CircleGauge, Clock3, DollarSign, Globe, Smartphone, Store, Layers3, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DEFAULT_RATES, loadRates, priceEstimate, PricingRates } from "../lib/pricing";
+import { saveProject } from "../lib/projects";
 
 type ProjectType = "Web" | "Mobile" | "WordPress" | "Hybrid";
 
@@ -81,6 +82,26 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   const removeFeature = (item: string) => setFeatures(features.filter((x) => x !== item));
   const flags = [auth && "Authentication", payments && "Payments", admin && "Admin panel", notifications && "Notifications", api && "External API", seo && "SEO / Analytics"].filter(Boolean) as string[];
   const analysis = buildAnalysis(type, description, features, flags);
+  const createProject = () => {
+    const estimate = priceEstimate(analysis.hours, type, rates, 1 + (analysis.complexity - 5) * 0.04);
+    saveProject({
+      id: crypto.randomUUID(),
+      name: name || "Untitled Project",
+      client,
+      type,
+      description,
+      features,
+      flags,
+      deadline,
+      budget,
+      hours: analysis.hours,
+      complexity: analysis.complexity,
+      value: Math.round(estimate.final),
+      createdAt: new Date().toISOString(),
+      status: "Analysis",
+    });
+    setSubmitted(true);
+  };
 
   if (submitted && analysisOpen) return <AnalysisScreen name={name} client={client} type={type} analysis={analysis} flags={flags} rates={rates} onBack={() => setAnalysisOpen(false)} />;
 
@@ -207,7 +228,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
             {step < 3 ? (
               <button className="primary" disabled={!canNext} onClick={() => setStep(step + 1)}>Continue <ArrowRight /></button>
             ) : (
-              <button className="primary" onClick={() => setSubmitted(true)}><Sparkles /> Create & Analyze</button>
+              <button className="primary" onClick={createProject}><Sparkles /> Create & Analyze</button>
             )}
           </div>
         </div>
