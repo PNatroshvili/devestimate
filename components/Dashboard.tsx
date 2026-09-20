@@ -109,8 +109,8 @@ export default function Dashboard() {
     <main className="shell">
       <aside className="sidebar dashboard-sidebar">
         <div className="brand dashboard-brand">
-          <img src="/skup-mark.svg" alt="SKUP Studio" />
-          <div><strong>SKUP Studio</strong><small>DevEstimate</small></div>
+          <img src="/skup-mark.svg" alt="DevEstimate" />
+          <div><strong>DevEstimate</strong><small>SKUP Studio</small></div>
         </div>
 
         <nav className="dashboard-nav">
