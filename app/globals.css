@@ -2038,3 +2038,53 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
   .target-kpis{grid-template-columns:1fr 1fr}
   .target-chart{height:220px}
 }
+
+
+.request-mockup-progress{
+  margin:0 0 12px;
+  padding:12px 13px;
+  border:1px solid #dfe7f0;
+  border-radius:10px;
+  background:#f7faff;
+}
+.request-mockup-progress-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.request-mockup-progress-top strong{
+  color:#31465f;
+  font-size:9px;
+}
+.request-mockup-progress-top span{
+  color:#3c79d8;
+  font-size:10px;
+  font-weight:700;
+}
+.request-mockup-progress-track{
+  height:7px;
+  margin-top:9px;
+  overflow:hidden;
+  border-radius:999px;
+  background:#e6edf5;
+}
+.request-mockup-progress-track i{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,#4a84e8,#2f6fd3);
+  transition:width .55s ease;
+}
+.request-mockup-progress-meta{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:7px;
+  color:#8190a4;
+  font-size:7px;
+}
+.request-client-message-error{
+  white-space:pre-wrap;
+  word-break:break-word;
+}
