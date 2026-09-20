@@ -1,0 +1,2 @@
+[functions.analyze-request]
+verify_jwt = true
