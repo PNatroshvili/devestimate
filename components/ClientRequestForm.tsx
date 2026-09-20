@@ -79,6 +79,7 @@ export default function ClientRequestForm() {
         features,
         deadline,
         budget,
+        budgetCurrency,
         flags,
         notes: notes.trim(),
         analysis,
