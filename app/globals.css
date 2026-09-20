@@ -2126,7 +2126,14 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
 }
 
 /* Dedicated client request detail route */
-.request-detail-route{min-height:100vh}
+.request-detail-route{
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:0;
+  min-height:100vh;
+  background:#f5f8fc;
+}
 .request-detail-backdrop{
   position:static;
   inset:auto;
@@ -2141,10 +2148,14 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
   width:100%;
   max-width:none;
   min-height:100vh;
+  height:auto;
   max-height:none;
+  display:flex;
+  flex-direction:column;
+  overflow:visible;
   border:0;
   border-radius:0;
-  background:#0b1422;
+  background:#f5f8fc;
   box-shadow:none;
   animation:none;
 }
@@ -2152,11 +2163,31 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
   position:sticky;
   top:0;
   z-index:4;
-  background:#0b1422;
+  flex:none;
+  padding:24px clamp(24px,4vw,64px) 20px;
+  background:rgba(255,255,255,.96);
+  border-bottom:1px solid #e4eaf2;
+  backdrop-filter:blur(12px);
 }
-.request-detail-card .request-modal-body{max-height:none}
+.request-detail-card .request-modal-body{
+  flex:none;
+  max-height:none;
+  overflow:visible;
+  padding:0 clamp(24px,4vw,64px) 32px;
+}
+.request-detail-card .request-modal-section{
+  max-width:1280px;
+  margin:0 auto;
+}
 .request-detail-card .request-modal-foot{
-  position:sticky;
-  bottom:0;
-  background:#0b1422;
+  position:static;
+  flex:none;
+  padding:16px clamp(24px,4vw,64px);
+  background:#fff;
+  border-top:1px solid #e4eaf2;
+}
+@media(max-width:720px){
+  .request-detail-card .request-modal-head{padding:18px 16px 16px}
+  .request-detail-card .request-modal-body{padding:0 16px 24px}
+  .request-detail-card .request-modal-foot{padding:14px 16px}
 }
