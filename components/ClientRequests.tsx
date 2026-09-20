@@ -433,12 +433,16 @@ ${budgetNote}
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!standalone) {
+      document.body.style.overflow = "hidden";
+    }
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previousOverflow;
+      if (!standalone) {
+        document.body.style.overflow = previousOverflow;
+      }
     };
-  }, [onClose]);
+  }, [onClose, standalone]);
 
   return (
     <div className={"request-modal-backdrop " + (standalone ? "request-detail-backdrop" : "")} onMouseDown={(event) => { if (!standalone && event.target === event.currentTarget) onClose(); }}>
