@@ -11,10 +11,6 @@ type Rates = {
 };
 
 const defaults: Rates = DEFAULT_RATES;
-  web: 45, mobile: 50, wordpress: 35, hybrid: 55,
-  design: 40, maintenance: 20, minimum: 500,
-  complexity: 1, urgency: 1.2, vat: 0, discount: 0,
-};
 
 export default function PricingRates({ onBack }: { onBack: () => void }) {
   const [rates, setRates] = useState<Rates>(defaults);
