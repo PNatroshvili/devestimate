@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Copy, Link2, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { ClipboardList, Copy, Link2, Loader2, MessageSquareText, RefreshCw, Sparkles, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeClientRequestWithAI,
@@ -9,6 +9,8 @@ import {
   createRequestLink,
   loadClientRequests,
   loadRequestLinks,
+  generateClientMessageWithAI,
+  updateClientMessage,
   updateClientRequestAnalysis,
 } from "../lib/clientRequests";
 import { loadRates, priceEstimate } from "../lib/pricing";
@@ -170,17 +172,27 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
         </aside>
       </div>
 
-      {selected && <RequestDetailModal request={selected} onClose={() => setSelected(null)} />}
+      {selected && <RequestDetailModal request={selected} onClose={() => setSelected(null)} onMessageSaved={(message) => {
+        const next = { ...selected, clientMessage: message };
+        setSelected(next);
+        setRequests((current) => current.map((item) => item.id === selected.id ? next : item));
+      }} />}
     </section>
   );
 }
 
-function RequestDetailModal({ request, onClose }: { request: ClientRequest; onClose: () => void }) {
+function RequestDetailModal({ request, onClose, onMessageSaved }: { request: ClientRequest; onClose: () => void; onMessageSaved: (message: string) => void }) {
   const analysis = request.analysis;
   const rates = loadRates();
   const price = analysis ? priceEstimate(analysis.hours, request.type, rates, 1 + (analysis.complexity - 5) * 0.04) : null;
   const submittedAt = new Date(request.createdAt).toLocaleString("ka-GE", { dateStyle: "medium", timeStyle: "short" });
-  const flags = [
+  const [clientMessage, setClientMessage] = useState(request.clientMessage || "");
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
+  const [messageError, setMessageError] = useState("");
+  const [messageReady, setMessageReady] = useState(Boolean(request.clientMessage));
+
+    const flags = [
     ["Authentication", "ავტორიზაცია და მომხმარებლები"],
     ["Payments", "გადახდები"],
     ["Admin panel", "ადმინისტრაციული პანელი"],
@@ -188,6 +200,77 @@ function RequestDetailModal({ request, onClose }: { request: ClientRequest; onCl
     ["External API", "გარე API / ინტეგრაციები"],
     ["SEO / Analytics", "SEO / ანალიტიკა"],
   ];
+
+  const priceLabel = price ? "$" + Math.round(price.final).toLocaleString() : "ფასი დასათვლელია";
+  const fallbackClientMessage = () => {
+    const stackLabel = analysis?.stack?.slice(0, 5).join(", ") || "შესაბამის თანამედროვე ტექნოლოგიებს";
+    const hoursLabel = analysis?.hours ? `დაახლოებით ${analysis.hours} საათის სამუშაო მოცულობას` : "საჭირო სამუშაო მოცულობას";
+    const budgetNote = request.budget ? `თქვენი მითითებული ბიუჯეტი: ${request.budgetCurrency} ${request.budget}.` : "";
+    return `გამარჯობა, ${request.clientName || "გულით მოგესალმებით"}! 👋
+
+მადლობა დეტალურად მოწოდებული ინფორმაციისთვის. თქვენი მოთხოვნის მიხედვით, პროექტის მიზანია „${request.projectName}“-ის შექმნა და მისი ძირითადი ფუნქციების სრულად გამართვა.
+
+ტექნიკური ნაწილი: პროექტისთვის რეკომენდებულია ${stackLabel}. ძირითადი სამუშაო მოიცავს ${analysis?.groups?.map((group) => group.name).join(", ") || "პროდუქტის ძირითად ფუნქციონალს, ტექნიკურ ნაწილსა და ტესტირებას"}.
+
+ვადა: დაგეგმილი სამუშაო მოცულობაა ${hoursLabel}.
+ღირებულება: ${priceLabel}.
+${budgetNote}
+
+დამატებითი ფუნქციები ან მოთხოვნები, რომლებიც ამ ეტაპზე აღწერილობაში არ შედის, საჭიროების შემთხვევაში ცალკე შეთანხმდება.
+
+თუ ეს მიმართულება თქვენთვის მისაღებია, შემდეგ ეტაპზე შეგვიძლია დეტალები და დაწყების თარიღი საბოლოოდ შევათანხმოთ.`;
+  };
+
+  const generateMessage = async () => {
+    setMessageLoading(true);
+    setMessageError("");
+    try {
+      const generated = await generateClientMessageWithAI({
+        clientName: request.clientName,
+        company: request.company,
+        projectName: request.projectName,
+        type: request.type,
+        description: request.description,
+        features: request.features,
+        flags: request.flags,
+        deadline: request.deadline,
+        requestedBudget: request.budget,
+        requestedBudgetCurrency: request.budgetCurrency,
+        estimatedHours: analysis?.hours || 0,
+        estimatedPrice: priceLabel,
+        stack: analysis?.stack || [],
+        openQuestions: analysis?.missing || [],
+        groups: analysis?.groups || [],
+      });
+      const nextMessage = generated || fallbackClientMessage();
+      setClientMessage(nextMessage);
+      setMessageReady(true);
+      await updateClientMessage(request.id, nextMessage);
+      onMessageSaved(nextMessage);
+    } catch (error) {
+      const nextMessage = fallbackClientMessage();
+      setClientMessage(nextMessage);
+      setMessageReady(true);
+      setMessageError(error instanceof Error ? "AI ტექსტის გენერირება ვერ მოხერხდა. გამოიყენეთ მზადყოფნაში არსებული ტექსტი ან კვლავ სცადეთ." : "AI ტექსტის გენერირება ვერ მოხერხდა. გამოიყენეთ მზადყოფნაში არსებული ტექსტი ან კვლავ სცადეთ.");
+      try {
+        await updateClientMessage(request.id, nextMessage);
+        onMessageSaved(nextMessage);
+      } catch {}
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  const copyClientMessage = async () => {
+    if (!clientMessage) return;
+    await navigator.clipboard.writeText(clientMessage);
+    setMessageCopied(true);
+    window.setTimeout(() => setMessageCopied(false), 1800);
+  };
+
+  useEffect(() => {
+    if (!request.clientMessage && !messageLoading && !messageReady) void generateMessage();
+  }, [request.id]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
