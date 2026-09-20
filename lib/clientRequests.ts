@@ -269,6 +269,11 @@ export async function generateRequestMockupsWithAI(requestId: string) {
     body: { requestId },
   });
   if (error) throw error;
-  if (data?.ok === false) throw new Error(String(data?.error || "Mockup generation failed"));
+  if (data?.ok === false) {
+    if (data?.code === "OPENAI_QUOTA_EXHAUSTED") {
+      throw new Error("OPENAI_QUOTA_EXHAUSTED");
+    }
+    throw new Error(String(data?.error || "Mockup generation failed"));
+  }
   return signRequestMockupUrls((data?.mockups || []) as RequestMockup[]);
 }
