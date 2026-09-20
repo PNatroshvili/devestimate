@@ -61,7 +61,8 @@ Deno.serve(async (req: Request) => {
     method: "POST",
     headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.4-mini",
+      reasoning: { effort: "low" },
       input: [
         { role: "system", content: [{ type: "input_text", text: system }] },
         { role: "user", content: [{ type: "input_text", text: JSON.stringify(safe) }] },
@@ -70,16 +71,19 @@ Deno.serve(async (req: Request) => {
     }),
   });
 
-  if (!response.ok) return new Response(JSON.stringify({ error: "OpenAI message generation failed" }), {
-    status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
+  if (!response.ok) {
+    const detail = await response.text();
+    return new Response(JSON.stringify({ ok: false, error: "OpenAI message generation failed", detail: detail.slice(0, 2500) }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
 
   const result = await response.json();
   const outputText = result.output?.flatMap((item: any) => item.content || [])
     .find((item: any) => item.type === "output_text")?.text;
 
-  if (!outputText) return new Response(JSON.stringify({ error: "No message returned" }), {
-    status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" }
+  if (!outputText) return new Response(JSON.stringify({ ok: false, error: "No message returned" }), {
+    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 
   const parsed = JSON.parse(outputText);
