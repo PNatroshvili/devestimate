@@ -17,7 +17,7 @@ export default function Analytics({onBack}:{onBack:()=>void}) {
   const source=projects.length?projects:demo;
   const completed=source.filter(p=>p.status==="Completed");
   const withActual=source.filter(p=>p.actualHours && p.actualHours>0);
-  const avgVariance=withActual.length ? withActual.reduce((sum,p)=>sum+((p.actualHours-p.hours)/p.hours*100),0)/withActual.length : 0;
+  const avgVariance=withActual.length ? withActual.reduce((sum,p)=>sum+(((p.actualHours||0)-p.hours)/p.hours*100),0)/withActual.length : 0;
   const totalEstimated=source.reduce((sum,p)=>sum+p.hours,0);
   const totalActual=withActual.reduce((sum,p)=>sum+(p.actualHours||0),0);
   const accuracy=withActual.length ? Math.max(0,Math.round(100-Math.abs(avgVariance))) : 0;
