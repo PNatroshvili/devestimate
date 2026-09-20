@@ -130,7 +130,7 @@ export default function ClientRequestForm() {
 
         <div className="client-form-head">
           <div><small>{t.request}</small><h1>{t.heroTitle}</h1><p>{t.heroText}</p></div>
-          <div className="client-no-price"><Sparkles /><span>{t.noPrice}</span></div>
+          
         </div>
 
         <div className="client-steps">
