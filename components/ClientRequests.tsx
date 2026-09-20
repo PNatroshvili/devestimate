@@ -21,7 +21,7 @@ import { isSupabaseConfigured } from "../lib/supabase";
 import { formatLearningMode, getLearningSignal } from "../lib/learning";
 import { loadProjects } from "../lib/projects";
 
-export default function ClientRequests({ onBack, requestIdFromUrl, standalone = false }: { onBack: () => void; requestIdFromUrl?: string | null; standalone?: boolean }) {
+export default function ClientRequests({ onBack, onOpenRequest, requestIdFromUrl, standalone = false }: { onBack: () => void; onOpenRequest?: (requestId: string) => void; requestIdFromUrl?: string | null; standalone?: boolean }) {
   const [links, setLinks] = useState<ClientRequestLink[]>([]);
   const [requests, setRequests] = useState<ClientRequest[]>([]);
   const [label, setLabel] = useState("");
@@ -195,7 +195,7 @@ export default function ClientRequests({ onBack, requestIdFromUrl, standalone = 
             ) : requests.length ? (
               <div className="request-list">
                 {requests.map((request) => (
-                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => { window.location.href = "/requests/?id=" + encodeURIComponent(request.id); }}>
+                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => onOpenRequest?.(request.id)}>
                     <div className="request-icon"><ClipboardList /></div>
                     <div className="request-row-main"><strong>{request.projectName}</strong><small>{request.clientName}{request.company ? " · " + request.company : ""} · {request.type}</small></div>
                     <div className="request-row-meta"><span>{new Date(request.createdAt).toLocaleDateString("ka-GE")}</span><b>{request.status}</b></div>
@@ -213,7 +213,7 @@ export default function ClientRequests({ onBack, requestIdFromUrl, standalone = 
             <Link2 className="request-guide-icon" />
             <small>HOW IT WORKS</small>
             <h3>Client → Form → Dashboard</h3>
-            <p>Share the generated link. The client fills in the requirements. After submission, the request appears here with the full technical review available in a dedicated popup.</p>
+            <p>Share the generated link. The client fills in the requirements. After submission, the request appears here with the full technical review in the Requests section.</p>
             <div className="request-steps"><span>01 Generate link</span><span>02 Client submits</span><span>03 Open full request</span><span>04 Price privately</span></div>
           </div>
         </aside>
