@@ -157,7 +157,8 @@ Deno.serve(async (req) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.6-luna",
+      model: "gpt-5.4",
+      reasoning: { effort: "low" },
       input,
       text: {
         format: {
@@ -172,8 +173,8 @@ Deno.serve(async (req) => {
 
   if (!response.ok) {
     const detail = await response.text();
-    return new Response(JSON.stringify({ error: "OpenAI analysis failed", detail }), {
-      status: 502,
+    return new Response(JSON.stringify({ ok: false, error: "OpenAI analysis failed", detail: detail.slice(0, 3000) }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
