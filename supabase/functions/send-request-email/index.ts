@@ -41,6 +41,17 @@ function listHtml(items: unknown[]) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "GET") {
+    if (!resendApiKey) return json({ ok: false, provider: "resend", reason: "RESEND_API_KEY missing" }, 200);
+    const openaiKey = Deno.env.get("OPENAI_API_KEY") || "";
+    if (!openaiKey) return json({ ok: false, provider: "openai", reason: "OPENAI_API_KEY missing" }, 200);
+    const response = await fetch("https://api.openai.com/v1/models", {
+      headers: { Authorization: "Bearer " + openaiKey },
+    });
+    const detail = response.ok ? null : (await response.text()).slice(0, 1500);
+    return json({ ok: response.ok, provider: "openai", status: response.status, detail }, 200);
+  }
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
