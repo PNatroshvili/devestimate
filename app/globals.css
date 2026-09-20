@@ -2124,3 +2124,39 @@ h1,h2,h3,h4,.heading h1,.np-top h1,.detail-title-row h1,.request-top h1,.request
   background:#fffaf4;
   color:#8a5a2d;
 }
+
+/* Dedicated client request detail route */
+.request-detail-route{min-height:100vh}
+.request-detail-backdrop{
+  position:static;
+  inset:auto;
+  min-height:100vh;
+  padding:0;
+  display:block;
+  background:transparent;
+  backdrop-filter:none;
+  animation:none;
+}
+.request-detail-card{
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  max-height:none;
+  border:0;
+  border-radius:0;
+  background:#0b1422;
+  box-shadow:none;
+  animation:none;
+}
+.request-detail-card .request-modal-head{
+  position:sticky;
+  top:0;
+  z-index:4;
+  background:#0b1422;
+}
+.request-detail-card .request-modal-body{max-height:none}
+.request-detail-card .request-modal-foot{
+  position:sticky;
+  bottom:0;
+  background:#0b1422;
+}
