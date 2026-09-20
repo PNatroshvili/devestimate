@@ -169,6 +169,8 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
           </div>
         </aside>
       </div>
+
+      {selected && <RequestDetailModal request={selected} onClose={() => setSelected(null)} />}
     </section>
   );
 }
@@ -301,4 +303,3 @@ function Info({ label, value, emphasis }: { label: string; value: string; emphas
 function EmptyValue({ text }: { text: string }) {
   return <div className="request-empty-value">{text}</div>;
 }
-function RequestDetailPlaceholder() { return null; }
