@@ -263,17 +263,43 @@ export async function signRequestMockupUrls(mockups: RequestMockup[]) {
   );
 }
 
+const MOCKUP_SLOTS = ["overview", "core", "admin", "mobile"] as const;
+
 export async function generateRequestMockupsWithAI(requestId: string) {
   if (!supabase) return [];
-  const { data, error } = await supabase.functions.invoke("generate-request-mockups", {
-    body: { requestId },
-  });
-  if (error) throw error;
-  if (data?.ok === false) {
-    if (data?.code === "OPENAI_QUOTA_EXHAUSTED") {
-      throw new Error("OPENAI_QUOTA_EXHAUSTED");
+
+  let latest: RequestMockup[] = [];
+
+  for (const slot of MOCKUP_SLOTS) {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const { data, error } = await supabase.functions.invoke("generate-request-mockups", {
+        body: { requestId, slot },
+      });
+
+      if (!error && data?.ok !== false) {
+        latest = (data?.mockups || []) as RequestMockup[];
+        lastError = null;
+        break;
+      }
+
+      lastError = new Error(
+        String(
+          data?.error ||
+          data?.detail ||
+          error?.message ||
+          "Mockup generation failed",
+        ),
+      );
+
+      if (attempt === 1) {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      }
     }
-    throw new Error(String(data?.error || "Mockup generation failed"));
+
+    if (lastError) throw lastError;
   }
-  return signRequestMockupUrls((data?.mockups || []) as RequestMockup[]);
+
+  return signRequestMockupUrls(latest);
 }
