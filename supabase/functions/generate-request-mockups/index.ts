@@ -123,6 +123,34 @@ async function generateImage(prompt: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "GET") {
+    const configured = Boolean(cloudflareAccountId && cloudflareApiToken);
+    if (!configured) return json({ ok: false, reason: "Cloudflare secrets missing" }, 200);
+
+    const response = await fetch(
+      "https://api.cloudflare.com/client/v4/accounts/" +
+        encodeURIComponent(cloudflareAccountId) +
+        "/ai/run/" +
+        encodeURIComponent(cloudflareModel),
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + cloudflareApiToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: "A simple clean SaaS dashboard card, white background, blue accent, UI mockup, no text.", steps: 4, width: 512, height: 512, guidance: 3.5 }),
+      },
+    );
+
+    if (!response.ok) {
+      const detail = await response.text();
+      return json({ ok: false, status: response.status, detail: detail.slice(0, 1800) }, 200);
+    }
+
+    const payload = await response.json();
+    return json({ ok: true, provider: "cloudflare-workers-ai", model: cloudflareModel, hasImage: Boolean(payload?.result?.image) }, 200);
+  }
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
