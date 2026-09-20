@@ -63,6 +63,28 @@ const analysisSchema = {
     },
     timelineWeeks: { type: "integer" },
     milestones: { type: "array", items: { type: "string" } },
+    mockupSpecs: {
+      type: "array",
+      minItems: 4,
+      maxItems: 4,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          slot: { type: "string", enum: ["overview","core","admin","mobile"] },
+          title: { type: "string" },
+          subtitle: { type: "string" },
+          nav: { type: "array", items: { type: "string" } },
+          primaryAction: { type: "string" },
+          stats: { type: "array", items: { type: "string" } },
+          widgets: { type: "array", items: { type: "string" } },
+          tableColumns: { type: "array", items: { type: "string" } },
+          formFields: { type: "array", items: { type: "string" } },
+          theme: { type: "string", enum: ["light","dark","neutral"] }
+        },
+        required: ["slot","title","subtitle","nav","primaryAction","stats","widgets","tableColumns","formFields","theme"]
+      }
+    },
     featureGroups: {
       type: "array",
       items: {
@@ -91,6 +113,7 @@ const analysisSchema = {
     "assumptions",
     "timelineWeeks",
     "milestones",
+    "mockupSpecs",
   ],
 };
 
@@ -127,7 +150,8 @@ Deno.serve(async (req) => {
         {
           type: "input_text",
           text:
-            "You are the senior software architect and estimation lead for SKUP Studio. Analyze the complete project brief conservatively. Recommend a practical architecture, technology stack, module breakdown, risks, assumptions, confidence, hours and timeline. Confidence is 0-100 and reflects how complete and unambiguous the brief is. Estimate engineering effort including implementation, integrations, QA and deployment. TimelineWeeks assumes roughly 30 engineering hours per week. Do not provide price, hourly rate, currency or commercial quote. Return only the requested JSON schema.",
+            "You are the senior software architect and estimation lead for SKUP Studio. Analyze the complete project brief conservatively. Recommend a practical architecture, technology stack, module breakdown, risks, assumptions, confidence, hours and timeline. Confidence is 0-100 and reflects how complete and unambiguous the brief is. Estimate engineering effort including implementation, integrations, QA and deployment. TimelineWeeks assumes roughly 30 engineering hours per week. Do not provide price, hourly rate, currency or commercial quote.
+Also create exactly four mockupSpecs (overview, core, admin, mobile). These are structured UI instructions for a deterministic renderer, not image prompts. Use concise real UI labels that fit the requested product domain. Never put long paragraphs into widgets. Prefer realistic navigation labels, KPI labels, table columns, form fields and actions. Do not invent features that contradict the brief. Return only the requested JSON schema.",
         },
       ],
     },
@@ -215,6 +239,7 @@ Deno.serve(async (req) => {
       assumptions: analysis.assumptions,
       timelineWeeks: analysis.timelineWeeks,
       milestones: analysis.milestones,
+      mockupSpecs: analysis.mockupSpecs,
       summary: analysis.summary,
       rationale: analysis.rationale,
     },
