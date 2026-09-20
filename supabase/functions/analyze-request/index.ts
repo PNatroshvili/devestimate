@@ -12,6 +12,7 @@ const analysisSchema = {
     rationale: { type: "string" },
     hours: { type: "integer" },
     complexity: { type: "integer" },
+    confidence: { type: "integer" },
     recommendedStack: {
       type: "array",
       items: { type: "string" },
@@ -20,6 +21,48 @@ const analysisSchema = {
       type: "array",
       items: { type: "string" },
     },
+    assumptions: { type: "array", items: { type: "string" } },
+    modules: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          description: { type: "string" },
+          hours: { type: "integer" },
+          priority: { type: "string", enum: ["core", "secondary"] },
+        },
+        required: ["name", "description", "hours", "priority"],
+      },
+    },
+    architecture: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        frontend: { type: "array", items: { type: "string" } },
+        backend: { type: "array", items: { type: "string" } },
+        data: { type: "array", items: { type: "string" } },
+        auth: { type: "array", items: { type: "string" } },
+        infra: { type: "array", items: { type: "string" } },
+      },
+      required: ["frontend", "backend", "data", "auth", "infra"],
+    },
+    risks: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          level: { type: "string", enum: ["low", "medium", "high"] },
+          title: { type: "string" },
+          detail: { type: "string" },
+        },
+        required: ["level", "title", "detail"],
+      },
+    },
+    timelineWeeks: { type: "integer" },
+    milestones: { type: "array", items: { type: "string" } },
     featureGroups: {
       type: "array",
       items: {
@@ -42,6 +85,12 @@ const analysisSchema = {
     "recommendedStack",
     "missingRequirements",
     "featureGroups",
+    "modules",
+    "architecture",
+    "risks",
+    "assumptions",
+    "timelineWeeks",
+    "milestones",
   ],
 };
 
@@ -78,7 +127,7 @@ Deno.serve(async (req) => {
         {
           type: "input_text",
           text:
-            "You are a senior software architect and estimation analyst. Analyze the client's project brief. Recommend a practical technology stack, identify missing requirements, break the work into sensible groups, estimate hours, and assign a 1-10 complexity score. Be conservative when the brief is ambiguous. Do not provide a price, hourly rate, currency, or commercial quote. Return only the requested JSON schema.",
+            "You are the senior software architect and estimation lead for SKUP Studio. Analyze the complete project brief conservatively. Recommend a practical architecture, technology stack, module breakdown, risks, assumptions, confidence, hours and timeline. Confidence is 0-100 and reflects how complete and unambiguous the brief is. Estimate engineering effort including implementation, integrations, QA and deployment. TimelineWeeks assumes roughly 30 engineering hours per week. Do not provide price, hourly rate, currency or commercial quote. Return only the requested JSON schema.",
         },
       ],
     },
@@ -155,9 +204,16 @@ Deno.serve(async (req) => {
     analysis: {
       hours: analysis.hours,
       complexity: analysis.complexity,
+      confidence: analysis.confidence,
       missing: analysis.missingRequirements,
       stack: analysis.recommendedStack,
       groups: analysis.featureGroups,
+      modules: analysis.modules,
+      architecture: analysis.architecture,
+      risks: analysis.risks,
+      assumptions: analysis.assumptions,
+      timelineWeeks: analysis.timelineWeeks,
+      milestones: analysis.milestones,
       summary: analysis.summary,
       rationale: analysis.rationale,
     },
