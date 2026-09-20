@@ -159,6 +159,22 @@ export async function analyzeClientRequestWithAI(payload: {
   return data.analysis as RequestAnalysis;
 }
 
+export async function updateClientRequestAnalysis(id: string, analysis: RequestAnalysis) {
+  if (!supabase) {
+    const items = loadLocal<ClientRequest>(REQUESTS_KEY);
+    saveLocal(
+      REQUESTS_KEY,
+      items.map((item) => item.id === id ? { ...item, analysis } : item),
+    );
+    return;
+  }
+  const { error } = await supabase
+    .from("client_requests")
+    .update({ analysis })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function submitClientRequest(token: string, payload: ClientRequestInput) {
   if (!supabase) {
     const link = loadLocal<ClientRequestLink>(LINKS_KEY).find((item) => item.token === token && item.active);
