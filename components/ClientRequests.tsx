@@ -14,7 +14,7 @@ import {
   signRequestMockupUrls,
   updateClientMessage,
   updateClientRequestAnalysis,
-  RequestMockup,
+  type RequestMockup,
 } from "../lib/clientRequests";
 import { loadRates, priceEstimate } from "../lib/pricing";
 import { isSupabaseConfigured } from "../lib/supabase";
