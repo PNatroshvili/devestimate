@@ -218,3 +218,12 @@ button:active:not(:disabled){transform:translateY(1px) scale(.992)}
   .client-submit{width:100%;justify-content:center}
   .client-footer{flex-direction:column}
 }
+
+
+/* Final SKUP branding + form metric polish */
+.brand img{width:26px;height:26px;display:block;flex:none;border-radius:8px}
+.auth-logo img{width:30px;height:30px;display:block;border-radius:9px}
+.skup-logo>img{width:30px;height:30px;display:block;border-radius:9px;flex:none}
+.request-detail-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:720px){.request-detail-metrics{grid-template-columns:1fr 1fr}}
+html{scroll-behavior:smooth}
