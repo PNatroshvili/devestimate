@@ -63,33 +63,43 @@ function makePrompt(slot: string, request: any) {
 }
 
 async function generateImage(prompt: string) {
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + openAiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-image-2",
-      prompt,
-      n: 1,
-      size: "1536x1024",
-      quality: "medium",
-      background: "opaque",
-      output_format: "webp",
-      moderation: "auto",
-    }),
-  });
+  let lastError = "Unknown image generation error.";
 
-  if (!response.ok) {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + openAiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-image-2",
+        prompt,
+        n: 1,
+        size: "1536x1024",
+        quality: "medium",
+        background: "opaque",
+        output_format: "jpeg",
+        output_compression: 88,
+        moderation: "auto",
+      }),
+    });
+
+    if (response.ok) {
+      const payload = await response.json();
+      const b64 = payload?.data?.[0]?.b64_json;
+      if (!b64) throw new Error("Image generation returned no image data.");
+      return Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
+    }
+
     const detail = await response.text();
-    throw new Error("Image generation failed: " + detail.slice(0, 1200));
+    lastError = "OpenAI image API " + response.status + ": " + detail.slice(0, 1800);
+
+    if (response.status !== 429 && response.status < 500) break;
+    await new Promise((resolve) => setTimeout(resolve, 900 * attempt));
   }
 
-  const payload = await response.json();
-  const b64 = payload?.data?.[0]?.b64_json;
-  if (!b64) throw new Error("Image generation returned no image data.");
-  return Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
+  throw new Error(lastError);
 }
 
 Deno.serve(async (req) => {
@@ -140,15 +150,16 @@ Deno.serve(async (req) => {
   const slots = ["overview", "core", "admin", "mobile"];
 
   try {
-    const generated = await Promise.all(
-      slots.map(async (slot, index) => {
+    const generated = [];
+    for (let index = 0; index < slots.length; index += 1) {
+      const slot = slots[index];
         const bytes = await generateImage(makePrompt(slot, request));
         const timestamp = Date.now();
-        const path = userId + "/" + request.id + "/" + timestamp + "-" + index + ".webp";
+        const path = userId + "/" + request.id + "/" + timestamp + "-" + index + ".jpg";
         const upload = await admin.storage
           .from("request-mockups")
           .upload(path, bytes, {
-            contentType: "image/webp",
+            contentType: "image/jpeg",
             upsert: true,
             cacheControl: "31536000",
           });
@@ -169,15 +180,14 @@ Deno.serve(async (req) => {
           mobile: "Responsive mobile interpretation of the core experience.",
         };
 
-        return {
-          slot,
-          title: titles[slot],
-          description: descriptions[slot],
-          path,
-          generatedAt: new Date().toISOString(),
-        };
-      }),
-    );
+      generated.push({
+        slot,
+        title: titles[slot],
+        description: descriptions[slot],
+        path,
+        generatedAt: new Date().toISOString(),
+      });
+    }
 
     await admin
       .from("client_requests")
