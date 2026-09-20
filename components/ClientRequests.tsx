@@ -73,7 +73,7 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
   useEffect(() => { void refresh(); }, []);
 
   const newRequests = useMemo(() => requests.filter((item) => item.status === "New").length, [requests]);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://estimate.skup.ge";
+  const origin = "https://estimate.skup.ge";
   const publicUrl = (token: string) => origin + "/request/?token=" + encodeURIComponent(token);
 
   const createLink = async () => {
