@@ -189,6 +189,7 @@ function RequestDetail({ request, onClose }: { request: ClientRequest; onClose: 
         <div><span>Hours</span><strong>{analysis?.hours || "—"}h</strong></div>
         <div><span>Complexity</span><strong>{analysis?.complexity || "—"}/10</strong></div>
         <div><span>Internal estimate</span><strong>{price ? "$" + Math.round(price.final).toLocaleString() : "—"}</strong></div>
+        <div><span>Requested budget</span><strong>{request.budget ? Number(request.budget).toLocaleString("ka-GE") : "—"}</strong></div>
       </div>
       <div className="request-detail-block"><span>Open questions</span>{analysis?.missing.slice(0, 5).map((item) => <small key={item}>{item}</small>)}</div>
       <div className="request-detail-block"><span>Client brief</span><p>{request.description}</p></div>
