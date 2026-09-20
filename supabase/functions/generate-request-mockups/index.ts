@@ -9,7 +9,9 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const openAiKey = Deno.env.get("OPENAI_API_KEY") || "";
+const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || "";
+const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN") || "";
+const cloudflareModel = "@cf/black-forest-labs/flux-2-dev";
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -63,48 +65,55 @@ function makePrompt(slot: string, request: any) {
 }
 
 async function generateImage(prompt: string) {
-  let lastError = "Unknown image generation error.";
+  if (!cloudflareAccountId || !cloudflareApiToken) {
+    const error = new Error("CLOUDFLARE_NOT_CONFIGURED");
+    (error as Error & { code?: string }).code = "CLOUDFLARE_NOT_CONFIGURED";
+    throw error;
+  }
+
+  let lastError = "Unknown Cloudflare Workers AI error.";
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + openAiKey,
-        "Content-Type": "application/json",
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("steps", "4");
+    form.append("width", "1024");
+    form.append("height", "768");
+    form.append("guidance", "3.5");
+
+    const response = await fetch(
+      "https://api.cloudflare.com/client/v4/accounts/" +
+        encodeURIComponent(cloudflareAccountId) +
+        "/ai/run/" +
+        encodeURIComponent(cloudflareModel),
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + cloudflareApiToken,
+        },
+        body: form,
       },
-      body: JSON.stringify({
-        model: "gpt-image-1.5",
-        prompt,
-        n: 1,
-        size: "1536x1024",
-        quality: "medium",
-        background: "opaque",
-        output_format: "jpeg",
-        output_compression: 88,
-        moderation: "auto",
-      }),
-    });
+    );
 
     if (response.ok) {
       const payload = await response.json();
-      const b64 = payload?.data?.[0]?.b64_json;
-      if (!b64) throw new Error("Image generation returned no image data.");
+      const b64 = payload?.result?.image;
+      if (!b64) {
+        throw new Error("Cloudflare Workers AI returned no image data.");
+      }
       return Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
     }
 
     const detail = await response.text();
     let parsed: any = null;
     try { parsed = JSON.parse(detail); } catch {}
-    const providerCode = parsed?.error?.code || "";
-    const providerType = parsed?.error?.type || "";
-
-    if (response.status === 429 && (providerCode === "credit_balance_exhausted" || providerType === "insufficient_quota")) {
-      const quotaError = new Error("OPENAI_QUOTA_EXHAUSTED");
-      (quotaError as Error & { code?: string }).code = "OPENAI_QUOTA_EXHAUSTED";
-      throw quotaError;
-    }
-
-    lastError = "OpenAI image API " + response.status + ": " + detail.slice(0, 1800);
+    const cloudflareCode = parsed?.errors?.[0]?.code || "";
+    lastError =
+      "Cloudflare Workers AI " +
+      response.status +
+      (cloudflareCode ? " (" + cloudflareCode + ")" : "") +
+      ": " +
+      detail.slice(0, 1800);
 
     if (response.status !== 429 && response.status < 500) break;
     await new Promise((resolve) => setTimeout(resolve, 900 * attempt));
@@ -117,8 +126,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  if (!openAiKey || !serviceRoleKey) {
-    return json({ error: "Required server secrets are not configured." }, 503);
+  if (!serviceRoleKey) {
+    return json({ error: "SUPABASE_SERVICE_ROLE_KEY is not configured." }, 503);
   }
 
   const authHeader = req.headers.get("Authorization") || "";
@@ -218,9 +227,10 @@ Deno.serve(async (req) => {
     return json({ ok: true, mockups: generated });
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String((error as { code?: string }).code || "") : "";
-    const message = code === "OPENAI_QUOTA_EXHAUSTED"
-      ? "OpenAI API credits are exhausted. Add credits to the OpenAI billing account and retry mockup generation."
-      : (error instanceof Error ? error.message : "Mockup generation failed.");
+    const message =
+      code === "CLOUDFLARE_NOT_CONFIGURED"
+        ? "Cloudflare Workers AI is not configured. Add CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN to Supabase secrets."
+        : (error instanceof Error ? error.message : "Mockup generation failed.");
 
     await admin
       .from("client_requests")
