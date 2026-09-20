@@ -24,6 +24,7 @@ export type ClientRequest = {
   features: string[];
   deadline: string;
   budget: string;
+  budgetCurrency: "GEL" | "USD" | "EUR";
   flags: string[];
   notes: string;
   analysis?: RequestAnalysis;
@@ -84,6 +85,7 @@ const mapRequest = (row: any): ClientRequest => ({
   features: row.features || [],
   deadline: row.deadline || "",
   budget: row.budget || "",
+  budgetCurrency: row.budget_currency || "GEL",
   flags: row.flags || [],
   notes: row.notes || "",
   analysis: row.analysis || undefined,
