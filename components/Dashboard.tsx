@@ -4,6 +4,8 @@ import { useState } from "react";
 import NewProject from "./NewProject";
 import PricingRates from "./PricingRates";
 import Projects from "./Projects";
+import ProjectDetail from "./ProjectDetail";
+import { StoredProject } from "../lib/projects";
 
 const projects = [
   ["E-commerce Platform","Web Application","In Progress","$4,850","Oct 12, 2026","🟣"],
@@ -17,10 +19,12 @@ const tech = [["Next.js","28%"],["WordPress","22%"],["React Native","18%"],["Nod
 function Status({v}:{v:string}){return <span className={"status "+v.toLowerCase().replaceAll(" ","-")}>{v}</span>}
 
 export default function Dashboard(){
-  const [page,setPage]=useState<"dashboard"|"new"|"rates"|"projects">("dashboard");
+  const [page,setPage]=useState<"dashboard"|"new"|"rates"|"projects"|"detail">("dashboard");
+  const [selectedProject,setSelectedProject]=useState<StoredProject | null>(null);
   if(page==="new") return <NewProject onBack={()=>setPage("dashboard")}/>;
   if(page==="rates") return <PricingRates onBack={()=>setPage("dashboard")}/>;
-  if(page==="projects") return <Projects onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")}/>;
+  if(page==="projects") return <Projects onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")} onOpen={(project)=>{setSelectedProject(project);setPage("detail")}}/>;
+  if(page==="detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={()=>setPage("projects")}/>;
 
   return <main className="shell">
     <aside className="sidebar">
