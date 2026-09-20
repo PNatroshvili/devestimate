@@ -3,9 +3,16 @@ export type ClientProjectType = "Web" | "Mobile" | "WordPress" | "Hybrid";
 export type RequestAnalysis = {
   hours: number;
   complexity: number;
+  confidence?: number;
   missing: string[];
   stack: string[];
   groups: { name: string; count: number; hours: number }[];
+  modules?: { name: string; description: string; hours: number; priority: "core" | "secondary" }[];
+  architecture?: { frontend: string[]; backend: string[]; data: string[]; auth: string[]; infra: string[] };
+  risks?: { level: "low" | "medium" | "high"; title: string; detail: string }[];
+  assumptions?: string[];
+  timelineWeeks?: number;
+  milestones?: string[];
   source?: "ai" | "rules";
   summary?: string;
   rationale?: string;
@@ -21,11 +28,13 @@ export function analyzeClientRequest(
   const featureHours = features.length * 6;
   const flagHours = flags.length * 7;
   const keywordBonus = /ecommerce|booking|marketplace|subscription|dashboard|multivendor/i.test(description) ? 12 : 0;
-  const hours = Math.round((base + featureHours + flagHours + keywordBonus) / 4) * 4;
+  const hours = Math.max(4, Math.round((base + featureHours + flagHours + keywordBonus) / 4) * 4);
   const complexity = Math.min(
     10,
     Math.max(2, Math.round((base / 10) + features.length * 0.45 + flags.length * 0.4 + keywordBonus / 10)),
   );
+
+  const confidence = Math.max(45, Math.min(88, 82 - Math.max(0, 5 - features.length) * 6 - Math.max(0, 2 - flags.length) * 5));
 
   const missing = [
     !flags.includes("Authentication") && "User roles & authentication",
@@ -75,5 +84,49 @@ export function analyzeClientRequest(
     },
   ].filter((x) => x.count > 0);
 
-  return { hours, complexity, missing, stack, groups };
+
+  const architecture = type === "WordPress"
+    ? { frontend: ["WordPress theme / custom templates"], backend: ["WordPress core", "Custom plugins / hooks"], data: ["MySQL", "ACF / custom fields"], auth: ["WordPress users & roles"], infra: ["Managed WordPress hosting", "SSL", "Backups"] }
+    : type === "Mobile"
+      ? { frontend: ["React Native", "Expo"], backend: ["Node.js API"], data: ["PostgreSQL"], auth: ["Token-based authentication"], infra: ["API hosting", "Push notifications", "Monitoring"] }
+      : type === "Hybrid"
+        ? { frontend: ["Next.js", "React Native / Expo"], backend: ["Node.js API"], data: ["PostgreSQL"], auth: ["Session / token authentication"], infra: ["Web hosting", "API hosting", "CI/CD"] }
+        : { frontend: ["Next.js", "TypeScript"], backend: ["Node.js API"], data: ["PostgreSQL"], auth: ["Session / token authentication"], infra: ["Web hosting", "CI/CD", "Monitoring"] };
+
+  const modules = groups.map((group, index) => ({
+    name: group.name,
+    description: index === 0 ? "Main user-facing functionality and core flows." : index === 1 ? "Business logic, APIs and integrations." : index === 2 ? "Administrative and content controls." : "Testing, production setup and release.",
+    hours: group.hours,
+    priority: index < 2 ? "core" as const : "secondary" as const,
+  }));
+
+  const timelineWeeks = Math.max(1, Math.ceil(hours / 30));
+  const milestones = ["Scope confirmation", "Core implementation", "Integration & QA", "Production launch"];
+  const risks = [
+    ...(missing.some((item) => /Payment/i.test(item)) ? [{ level: "high" as const, title: "Payment scope", detail: "Provider, refund flow and edge cases need confirmation." }] : []),
+    ...(flags.includes("External API") ? [{ level: "medium" as const, title: "External integration", detail: "Delivery depends on third-party API documentation and behavior." }] : []),
+    ...(missing.some((item) => /Hosting/i.test(item)) ? [{ level: "low" as const, title: "Deployment scope", detail: "Hosting, domain, SSL and backup expectations need confirmation." }] : []),
+  ];
+  const assumptions = [
+    "Estimate assumes the currently described scope and standard UX patterns.",
+    "New requirements may change time and cost.",
+    "Client-provided content, accounts and third-party credentials are available when needed.",
+  ];
+
+  return {
+    hours,
+    complexity,
+    confidence,
+    missing,
+    stack,
+    groups,
+    modules,
+    architecture,
+    risks,
+    assumptions,
+    timelineWeeks,
+    milestones,
+    summary: "Initial scope-based analysis generated from the submitted project brief.",
+    rationale: "The recommendation prioritizes a maintainable stack, clear separation of concerns and a delivery plan that matches the described scope.",
+  };
 }
