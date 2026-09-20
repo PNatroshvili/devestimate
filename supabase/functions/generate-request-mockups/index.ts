@@ -85,7 +85,7 @@ async function generateImage(prompt: string) {
       "https://api.cloudflare.com/client/v4/accounts/" +
         encodeURIComponent(cloudflareAccountId) +
         "/ai/run/" +
-        encodeURIComponent(cloudflareModel),
+        cloudflareModel,
       {
         method: "POST",
         headers: {
