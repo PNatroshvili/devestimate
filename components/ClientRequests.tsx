@@ -252,7 +252,12 @@ function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }
     } catch (error) {
       setMockupStatus("error");
       setMockupProgress((current) => current || Math.min(92, mockups.length * 25));
-      setMockupError(error instanceof Error ? error.message : "მოქაფების გენერირება ვერ მოხერხდა.");
+      const raw = error instanceof Error ? error.message : "მოქაფების გენერირება ვერ მოხერხდა.";
+      setMockupError(
+        raw === "OPENAI_QUOTA_EXHAUSTED"
+          ? "AI მოქაფების გენერირებისთვის OpenAI API-ს კრედიტი ამოიწურა. დაამატე კრედიტი OpenAI Billing-ში და შემდეგ დააჭირე „თავიდან გენერირება“."
+          : raw,
+      );
     } finally {
       setMockupLoading(false);
     }
@@ -570,11 +575,21 @@ ${budgetNote}
               </div>
               <button className="secondary" onClick={() => void generateMockups()} disabled={mockupLoading || !analysis}>
                 <ImageIcon />
-                {mockupLoading ? "იქმნება 4 მოქაფი..." : mockups.length ? "თავიდან გენერირება" : "4 მოქაფის გენერირება"}
+                {mockupLoading ? "იქმნება 4 მოქაფი..." : mockupStatus === "error" ? "თავიდან გენერირება" : mockups.length ? "თავიდან გენერირება" : "4 მოქაფის გენერირება"}
               </button>
             </div>
 
-            {mockupError && <div className="request-client-message-error">{mockupError}</div>}
+            {mockupError && (
+              <div className={"request-mockup-error " + (mockupError.includes("OpenAI API") ? "quota" : "")}>
+                <strong>{mockupError.includes("OpenAI API") ? "OpenAI კრედიტი საჭიროა" : "მოქაფების გენერირების შეცდომა"}</strong>
+                <span>{mockupError}</span>
+                {mockupError.includes("OpenAI API") && (
+                  <a href="https://platform.openai.com/settings/organization/billing/" target="_blank" rel="noreferrer">
+                    OpenAI Billing →
+                  </a>
+                )}
+              </div>
+            )}
 
             {(mockupLoading || mockupStatus === "generating") && (
               <div className="request-mockup-progress">
