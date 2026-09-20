@@ -311,3 +311,8 @@ function formatTargetDate(value:string){
   if(days<7)return days+"d ago";
   return date.toLocaleDateString("en-US",{month:"short",day:"2-digit"});
 }
+
+
+function Status({v}:{v:"New"|"Reviewed"|"Converted"|"Archived"}){
+  return <span className={"dashboard-status "+v.toLowerCase()}>{v}</span>;
+}
