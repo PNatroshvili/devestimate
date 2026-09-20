@@ -31,6 +31,16 @@ export default function Dashboard(){
   const [selectedProject,setSelectedProject]=useState<StoredProject | null>(null);
   const [authLoading,setAuthLoading]=useState(isSupabaseConfigured);
   const [authenticated,setAuthenticated]=useState(!isSupabaseConfigured);
+  const [requestIdFromUrl,setRequestIdFromUrl]=useState<string | null>(null);
+
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get("requestId");
+    if (requestId) {
+      setRequestIdFromUrl(requestId);
+      setPage("requests");
+    }
+  },[]);
 
   useEffect(()=>{
     if(!supabase) return;
@@ -56,7 +66,7 @@ export default function Dashboard(){
     if(page==="projects") return <Projects onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")} onOpen={openProject}/>;
     if(page==="templates") return <Templates onBack={()=>setPage("dashboard")} onNew={()=>setPage("new")}/>;
     if(page==="analytics") return <Analytics onBack={()=>setPage("dashboard")}/>;
-    if(page==="requests") return <ClientRequests onBack={()=>setPage("dashboard")}/>;
+    if(page==="requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} onBack={()=>setPage("dashboard")}/>;
     if(page==="detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={()=>setPage("projects")}/>;
     return <DashboardHome onNew={()=>setPage("new")} onProjects={()=>setPage("projects")} onRates={()=>setPage("rates")} onAnalytics={()=>setPage("analytics")} onRequests={()=>setPage("requests")}/>;
   };
