@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { saveProject, StoredProject } from "../lib/projects";
 import { loadRates, priceEstimate, rateForType } from "../lib/pricing";
 
-type Tab = "overview" | "requirements" | "pricing" | "proposal";
+type Tab = "overview" | "requirements" | "pricing" | "proposal" | "spec";
 
 export default function ProjectDetail({ project, onBack }: { project: StoredProject; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -34,6 +34,41 @@ export default function ProjectDetail({ project, onBack }: { project: StoredProj
       : project.type === "Hybrid"
         ? ["Next.js", "React Native / Expo", "Node.js", "PostgreSQL", "REST API"]
         : ["Next.js", "TypeScript", "Node.js", "PostgreSQL", "REST API"];
+
+  const specText = [
+    "TECHNICAL SPECIFICATION",
+    "========================",
+    "Project: " + project.name,
+    "Type: " + project.type,
+    "",
+    "1. OBJECTIVE",
+    project.description || "Define the main product objective from the approved brief.",
+    "",
+    "2. RECOMMENDED STACK",
+    ...stack.map(x => "• " + x),
+    "",
+    "3. CORE MODULES",
+    ...(project.features.length ? project.features.map(x => "• " + x) : ["• Core scope to be confirmed"]),
+    "",
+    "4. CROSS-CUTTING REQUIREMENTS",
+    ...(project.flags.length ? project.flags.map(x => "• " + x) : ["• Authentication / roles should be confirmed"]),
+    "• Hosting, deployment and domain",
+    "• Acceptance criteria and post-launch support",
+    "",
+    "5. ESTIMATION",
+    "Estimated effort: " + project.hours + " hours",
+    "Complexity: " + project.complexity + "/10",
+    "Standard commercial value: $" + packages.Standard.toLocaleString(),
+    "",
+    "6. QA & DELIVERY",
+    "• Functional testing",
+    "• Responsive / device testing where applicable",
+    "• Production deployment and smoke test",
+    "• Handover documentation",
+    "",
+    "7. OPEN QUESTIONS / RISKS",
+    ...(questions.length ? questions.map(x => "• " + x) : ["• No open questions recorded"])
+  ].join("\\n");
 
   const proposalText = [
     "PROJECT PROPOSAL",
@@ -92,6 +127,7 @@ export default function ProjectDetail({ project, onBack }: { project: StoredProj
       <button className={tab==="requirements"?"active":""} onClick={()=>setTab("requirements")}><Sparkles/> Requirements</button>
       <button className={tab==="pricing"?"active":""} onClick={()=>setTab("pricing")}><Save/> Pricing</button>
       <button className={tab==="proposal"?"active":""} onClick={()=>setTab("proposal")}><FileText/> Proposal</button>
+      <button className={tab==="spec"?"active":""} onClick={()=>setTab("spec")}><Sparkles/> Technical Spec</button>
     </div>
 
     {tab==="overview" && <div className="detail-grid">
@@ -154,6 +190,11 @@ export default function ProjectDetail({ project, onBack }: { project: StoredProj
     {tab==="proposal" && <div className="proposal-layout">
       <div className="np-card proposal-card"><div className="np-card-head"><div><h2>Proposal draft</h2><p>Edit externally or copy into your client document.</p></div><button className="copy-button" onClick={copyProposal}>{copied?<Check/>:<Copy/>}{copied?"Copied":"Copy"}</button></div><pre>{proposalText}</pre></div>
       <div className="np-card proposal-side"><FileText/><h3>Proposal checklist</h3><span><Check/> Project scope</span><span><Check/> Feature list</span><span><Check/> Technology recommendation</span><span><Check/> Hours & pricing</span><span><Check/> Assumptions / open questions</span><button className="secondary" onClick={copyProposal}><Copy/> Copy proposal text</button></div>
+    </div>}
+
+    {tab==="spec" && <div className="proposal-layout">
+      <div className="np-card proposal-card"><div className="np-card-head"><div><h2>Technical specification</h2><p>Implementation-ready first draft from the current estimate.</p></div><button className="copy-button" onClick={async()=>{await navigator.clipboard.writeText(specText);setCopied(true);setTimeout(()=>setCopied(false),1500)}}>{copied?<Check/>:<Copy/>}{copied?"Copied":"Copy"}</button></div><pre>{specText}</pre></div>
+      <div className="np-card proposal-side"><FileText/><h3>Specification checklist</h3><span><Check/> Architecture & stack</span><span><Check/> Scope modules</span><span><Check/> API & integrations</span><span><Check/> QA / deployment</span><span><Check/> Risks & assumptions</span><button className="secondary" onClick={async()=>{await navigator.clipboard.writeText(specText);setCopied(true);setTimeout(()=>setCopied(false),1500)}}><Copy/> Copy technical spec</button></div>
     </div>}
   </section>;
 }
