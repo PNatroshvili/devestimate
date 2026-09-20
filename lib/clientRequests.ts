@@ -175,11 +175,12 @@ export async function analyzeClientRequestWithAI(payload: {
 }
 
 export async function signRequestMockupUrls(mockups: RequestMockup[]) {
-  if (!supabase || !mockups.length) return mockups;
+  const client = supabase;
+  if (!client || !mockups.length) return mockups;
   const signed = await Promise.all(
     mockups.map(async (item) => {
       try {
-        const { data } = await supabase
+        const { data } = await client
           .storage
           .from("request-mockups")
           .createSignedUrl(item.path, 60 * 60 * 24);
