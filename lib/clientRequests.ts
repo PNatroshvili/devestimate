@@ -28,6 +28,7 @@ export type ClientRequest = {
   flags: string[];
   notes: string;
   analysis?: RequestAnalysis;
+  clientMessage?: string;
   status: "New" | "Reviewed" | "Converted" | "Archived";
   createdAt: string;
 };
@@ -89,6 +90,7 @@ const mapRequest = (row: any): ClientRequest => ({
   flags: row.flags || [],
   notes: row.notes || "",
   analysis: row.analysis || undefined,
+  clientMessage: row.client_message || undefined,
   status: row.status || "New",
   createdAt: row.created_at,
 });
@@ -174,6 +176,35 @@ export async function updateClientRequestAnalysis(id: string, analysis: RequestA
     .from("client_requests")
     .update({ analysis })
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function generateClientMessageWithAI(payload: {
+  clientName: string;
+  company: string;
+  projectName: string;
+  type: ClientProjectType;
+  description: string;
+  features: string[];
+  flags: string[];
+  deadline: string;
+  requestedBudget: string;
+  requestedBudgetCurrency: "GEL" | "USD" | "EUR";
+  estimatedHours: number;
+  estimatedPrice: string;
+  stack: string[];
+  openQuestions: string[];
+  groups: { name: string; count: number; hours: number }[];
+}) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.functions.invoke("generate-client-message", { body: payload });
+  if (error || !data?.message) return null;
+  return String(data.message);
+}
+
+export async function updateClientMessage(id: string, message: string) {
+  if (!supabase) return;
+  const { error } = await supabase.from("client_requests").update({ client_message: message }).eq("id", id);
   if (error) throw error;
 }
 
