@@ -140,9 +140,9 @@ button:active:not(:disabled){transform:translateY(1px) scale(.992)}
 }
 .client-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
 .client-card-head h2{font-size:15px;color:#1c2a40;margin:0 0 4px}
-.client-card-head p{margin:0;color:#7b8799;font-size:13px}
+.client-card-head p{margin:0;color:#53637b;font-size:13px}
 .client-card-head>span{font-size:9px;color:#a0aaba}
-.client-card label,.client-field-title{display:block;color:#5d6d83;font-size:11px;margin-bottom:14px}
+.client-card label,.client-field-title{display:block;color:#53637b;font-size:13px;margin-bottom:14px}
 .client-card label b,.client-field-title b{color:#4a78da;font-weight:600}
 .client-card input,.client-card textarea{
   display:block;width:100%;margin-top:7px;border:1px solid #dce4ee;background:#fbfcfe;
