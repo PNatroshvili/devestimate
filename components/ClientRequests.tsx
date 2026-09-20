@@ -347,7 +347,7 @@ ${budgetNote}
             <div className="request-modal-section-head"><span>05</span><div><h3>ვადები, ბიუჯეტი და დამატებითი ინფორმაცია</h3><p>ფორმის ბოლო ნაწილის ყველა ველი</p></div></div>
             <div className="request-modal-grid">
               <Info label="სასურველი დასრულების ვადა" value={request.deadline || "არ არის მითითებული"} />
-              <Info label="სასურველი ბიუჯეტი" value={request.budget || "არ არის მითითებული"} emphasis />
+              <Info label="სასურველი ბიუჯეტი" value={request.budget ? `${request.budgetCurrency} ${request.budget}` : "არ არის მითითებული"} emphasis />
             </div>
             <div className="request-modal-field request-modal-wide"><span>დამატებითი შენიშვნები</span><p>{request.notes || "კლიენტს დამატებითი ინფორმაცია არ მიუთითებია."}</p></div>
           </section>
@@ -367,6 +367,52 @@ ${budgetNote}
               <div className="request-modal-field"><span>დასაზუსტებელი საკითხები</span>{analysis?.missing?.length ? <ul>{analysis.missing.map((item) => <li key={item}>{item}</li>)}</ul> : <EmptyValue text="დამატებითი კითხვები არ არის." />}</div>
             </div>
             {analysis?.groups?.length ? <div className="request-modal-field request-modal-wide"><span>სამუშაოს ჯგუფები</span><div className="request-groups">{analysis.groups.map((group) => <div key={group.name}><strong>{group.name}</strong><span>{group.count} კომპონენტი • {group.hours} სთ</span></div>)}</div></div> : null}
+          </section>
+
+          <section className="request-modal-section">
+            <div className="request-modal-section-head"><span>07</span><div><h3>დამკვეთისთვის გასაგზავნი ტექსტი</h3><p>AI ამზადებს მოკლე, მეგობრულ და კონკრეტულ ტექსტს, რომლის გაგზავნაც შეგიძლია პირდაპირ დამკვეთთან.</p></div></div>
+
+            <div className="request-client-message-toolbar">
+              <button className="secondary" onClick={() => void generateMessage()} disabled={messageLoading}>
+                <Wand2 />
+                {messageLoading ? "გენერირდება..." : messageReady ? "თავიდან გენერირება" : "AI-ით მომზადება"}
+              </button>
+              <button className="secondary" onClick={() => void copyClientMessage()} disabled={!clientMessage}>
+                <Copy />
+                {messageCopied ? "დაკოპირდა" : "ტექსტის კოპირება"}
+              </button>
+            </div>
+
+            {messageError && <div className="request-client-message-error">{messageError}</div>}
+
+            <div className="request-client-message">
+              {messageLoading && !clientMessage ? (
+                <div className="request-message-loading">
+                  <Loader2 className="spin" />
+                  <span>AI ამზადებს ტექსტს...</span>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    value={clientMessage}
+                    onChange={(event) => {
+                      setClientMessage(event.target.value);
+                      setMessageReady(true);
+                    }}
+                    onBlur={() => {
+                      if (!clientMessage.trim()) return;
+                      void updateClientMessage(request.id, clientMessage.trim());
+                      onMessageSaved(clientMessage.trim());
+                    }}
+                    placeholder="აქ გამოჩნდება ტექსტი, რომლის გაგზავნაც შეგიძლია დამკვეთთან..."
+                    rows={15}
+                  />
+                  <div className="request-client-message-hint">
+                    შეგიძლია ტექსტი სურვილისამებრ შეცვალო და შემდეგ პირდაპირ დააკოპირო.
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         </div>
 
