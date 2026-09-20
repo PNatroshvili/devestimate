@@ -35,17 +35,19 @@ The Pages workflow already passes these values into the static build.
 
 ## 5. Enable real AI analysis
 
-The request form first calculates a local fallback analysis. When the Supabase Edge Function is available, it asks OpenAI for a structured technical analysis and falls back automatically if the function is unavailable.
+The public request form stores a deterministic first-pass analysis immediately. After the request appears in your private dashboard, DevEstimate automatically sends only the project brief, features, scope flags and planning context to the authenticated Edge Function. The dashboard then replaces the fallback analysis with the AI result when the function is configured.
 
 Deploy:
 
 supabase/functions/analyze-request/index.ts
 
+The repository includes supabase/config.toml with JWT verification enabled for this function.
+
 Then add the Edge Function secret:
 
 OPENAI_API_KEY
 
-The function uses the Responses API with structured JSON output and does not receive the client's contact details. OpenAI documents the Responses API and structured JSON schema output, and the current cost-sensitive GPT-5.6 Luna model is suitable for this high-volume estimation workflow.
+The function uses the Responses API with structured JSON output and does not receive the client's name, email or phone. The Edge Function requires an authenticated dashboard session.
 
 ## 6. Public client URL
 
