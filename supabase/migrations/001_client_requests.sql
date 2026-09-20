@@ -32,6 +32,7 @@ create table if not exists public.client_requests (
   flags text[] not null default '{}',
   notes text,
   analysis jsonb,
+  client_message text,
   status text not null default 'New',
   created_at timestamptz not null default now()
 );
