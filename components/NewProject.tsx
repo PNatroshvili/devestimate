@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, AlertTriangle, Check, Code2, CircleGauge, Clock3, DollarSign, Globe, Smartphone, Store, Layers3, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { DEFAULT_RATES, loadRates, priceEstimate, PricingRates } from "../lib/pricing";
 
 type ProjectType = "Web" | "Mobile" | "WordPress" | "Hybrid";
 
@@ -66,6 +67,8 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   const [seo, setSeo] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [rates, setRates] = useState<PricingRates>(DEFAULT_RATES);
+  useEffect(() => setRates(loadRates()), []);
 
   const addFeature = () => {
     const value = featureInput.trim();
@@ -79,7 +82,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   const flags = [auth && "Authentication", payments && "Payments", admin && "Admin panel", notifications && "Notifications", api && "External API", seo && "SEO / Analytics"].filter(Boolean) as string[];
   const analysis = buildAnalysis(type, description, features, flags);
 
-  if (submitted && analysisOpen) return <AnalysisScreen name={name} client={client} type={type} analysis={analysis} flags={flags} onBack={() => setAnalysisOpen(false)} />;
+  if (submitted && analysisOpen) return <AnalysisScreen name={name} client={client} type={type} analysis={analysis} flags={flags} rates={rates} onBack={() => setAnalysisOpen(false)} />;
 
   const canNext = step === 0 ? Boolean(name.trim() && description.trim()) : true;
 
@@ -228,10 +231,11 @@ function Review({ label, value }: { label: string; value: string }) {
 }
 
 function AnalysisScreen({ name, client, type, analysis, flags, onBack }: {
-  name: string; client: string; type: ProjectType; analysis: ReturnType<typeof buildAnalysis>; flags: string[]; onBack: () => void;
+  name: string; client: string; type: ProjectType; analysis: ReturnType<typeof buildAnalysis>; flags: string[]; rates: PricingRates; onBack: () => void;
 }) {
   const [tab, setTab] = useState<"overview" | "questions">("overview");
-  const estimatedValue = analysis.hours * 45;
+  const estimate = priceEstimate(analysis.hours, type, rates, 1 + (analysis.complexity - 5) * 0.04);
+  const packagePrices = { Basic: Math.round(Math.max(rates.minimum, estimate.final * 0.85)), Standard: Math.round(estimate.final), Premium: Math.round(estimate.final * 1.25) };
   return <section className="content new-project-page analysis-page">
     <header><div className="np-header-spacer" /><div className="np-save">Analysis engine · v1</div></header>
     <div className="analysis-top">
@@ -241,8 +245,8 @@ function AnalysisScreen({ name, client, type, analysis, flags, onBack }: {
     <div className="analysis-stats">
       <div><Clock3/><span>Estimated hours</span><strong>{analysis.hours}h</strong></div>
       <div><CircleGauge/><span>Complexity</span><strong>{analysis.complexity}/10</strong></div>
-      <div><DollarSign/><span>Draft value</span><strong>{"$" + estimatedValue.toLocaleString()}</strong></div>
-      <div><Code2/><span>Recommended stack</span><strong>{analysis.stack[0]}</strong></div>
+      <div><DollarSign/><span>Final estimate</span><strong>{"$" + Math.round(estimate.final).toLocaleString()}</strong></div>
+      <div><Code2/><span>Hourly rate</span><strong>{"$" + estimate.rate + "/h"}</strong></div>
     </div>
     <div className="analysis-tabs">
       <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>Analysis Overview</button>
@@ -258,9 +262,10 @@ function AnalysisScreen({ name, client, type, analysis, flags, onBack }: {
       <div className="np-card"><div className="np-card-head"><div><h2>Complexity signals</h2><p>What is driving the estimate</p></div><span>{analysis.complexity}/10</span></div>
         <div className="signal-list"><Signal label="Project type" value={type} /><Signal label="Known features" value={String(flags.length)} /><Signal label="Scope flags" value={String(flags.length)} /><Signal label="Description signal" value={analysis.complexity >= 7 ? "High" : analysis.complexity >= 5 ? "Medium" : "Low"} /></div>
       </div>
-      <div className="np-card"><div className="np-card-head"><div><h2>Estimation note</h2><p>Commercial output before pricing rules</p></div><span>PREVIEW</span></div>
-        <div className="estimate-preview"><div><span>Hours</span><strong>{analysis.hours}h</strong></div><div><span>Draft hourly rate</span><strong>$45/h</strong></div><div><span>Draft value</span><strong>{"$" + estimatedValue.toLocaleString()}</strong></div></div>
-        <div className="analysis-warning"><AlertTriangle/><span>This is a first-pass estimate. Final pricing will use your configured rates, minimums, urgency and maintenance rules.</span></div>
+      <div className="np-card"><div className="np-card-head"><div><h2>Pricing options</h2><p>Calculated from your saved pricing rules</p></div><span>LIVE</span></div>
+        <div className="estimate-preview"><div><span>Hours</span><strong>{analysis.hours}h</strong></div><div><span>Rate</span><strong>{"$" + estimate.rate + "/h"}</strong></div><div><span>Final</span><strong>{"$" + Math.round(estimate.final).toLocaleString()}</strong></div></div>
+        <div className="package-grid">{Object.entries(packagePrices).map(([label, value]) => <div className={"package-card " + label.toLowerCase()} key={label}><span>{label}</span><strong>{"$" + value.toLocaleString()}</strong><small>{label === "Basic" ? "Core scope" : label === "Standard" ? "Recommended scope" : "Extended scope + buffer"}</small></div>)}</div>
+        <div className="analysis-warning"><AlertTriangle/><span>Price uses your saved rate, minimum price, complexity, urgency, discount and VAT settings. Package multipliers are proposal defaults.</span></div>
       </div>
     </div> : <div className="np-card missing-card">
       <div className="np-card-head"><div><h2>Questions before pricing</h2><p>These items can materially change scope or hours.</p></div><span>{analysis.missing.length} open</span></div>
