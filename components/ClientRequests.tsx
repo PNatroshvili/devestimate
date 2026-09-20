@@ -1,8 +1,16 @@
 "use client";
 
-import { ClipboardList, Copy, ExternalLink, Link2, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { ClientRequest, ClientRequestLink, createRequestLink, loadClientRequests, loadRequestLinks } from "../lib/clientRequests";
+import { ClipboardList, Copy, Link2, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  analyzeClientRequestWithAI,
+  ClientRequest,
+  ClientRequestLink,
+  createRequestLink,
+  loadClientRequests,
+  loadRequestLinks,
+  updateClientRequestAnalysis,
+} from "../lib/clientRequests";
 import { loadRates, priceEstimate } from "../lib/pricing";
 import { isSupabaseConfigured } from "../lib/supabase";
 
@@ -16,6 +24,36 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const aiAttempted = useRef<Set<string>>(new Set());
+
+  const runAiForNewRequests = async (items: ClientRequest[]) => {
+    if (!isSupabaseConfigured) return;
+    const candidates = items.filter(
+      (item) => item.status === "New" && item.analysis?.source !== "ai" && !aiAttempted.current.has(item.id),
+    ).slice(0, 3);
+
+    for (const request of candidates) {
+      aiAttempted.current.add(request.id);
+      try {
+        const analysis = await analyzeClientRequestWithAI({
+          projectName: request.projectName,
+          type: request.type,
+          description: request.description,
+          features: request.features,
+          flags: request.flags,
+          deadline: request.deadline,
+          notes: request.notes,
+        });
+        if (!analysis) continue;
+        const next = { ...request, analysis: { ...analysis, source: "ai" as const } };
+        await updateClientRequestAnalysis(request.id, next.analysis);
+        setRequests((current) => current.map((item) => item.id === request.id ? next : item));
+        setSelected((current) => current?.id === request.id ? next : current);
+      } catch {
+        // Keep the deterministic analysis as a safe fallback.
+      }
+    }
+  };
 
   const refresh = async () => {
     setError("");
@@ -24,6 +62,7 @@ export default function ClientRequests({ onBack }: { onBack: () => void }) {
       const [nextLinks, nextRequests] = await Promise.all([loadRequestLinks(), loadClientRequests()]);
       setLinks(nextLinks);
       setRequests(nextRequests);
+      void runAiForNewRequests(nextRequests);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load client requests.");
     } finally {
