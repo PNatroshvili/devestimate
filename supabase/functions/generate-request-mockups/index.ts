@@ -70,7 +70,7 @@ async function generateImage(prompt: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-image-1.5",
+      model: "gpt-image-2",
       prompt,
       n: 1,
       size: "1536x1024",
