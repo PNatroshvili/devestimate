@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.generate-client-message]
 verify_jwt = true
+
+[functions.generate-request-mockups]
+verify_jwt = false
