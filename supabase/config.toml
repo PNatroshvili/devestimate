@@ -1,2 +1,5 @@
 [functions.analyze-request]
 verify_jwt = true
+
+[functions.generate-client-message]
+verify_jwt = true
