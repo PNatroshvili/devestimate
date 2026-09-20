@@ -28,6 +28,7 @@ create table if not exists public.client_requests (
   features text[] not null default '{}',
   deadline date,
   budget text,
+  budget_currency text not null default 'GEL',
   flags text[] not null default '{}',
   notes text,
   analysis jsonb,
@@ -82,39 +83,25 @@ as $$
 declare
   v_link public.request_links%rowtype;
   v_id uuid;
+  v_currency text := upper(coalesce(nullif(trim(p_payload->>'budgetCurrency'), ''), 'GEL'));
 begin
-  select * into v_link
-  from public.request_links
-  where token = p_token
-    and active = true
-  limit 1;
-
-  if not found then
-    raise exception 'Invalid or inactive request link';
+  if v_currency not in ('GEL','USD','EUR') then
+    v_currency := 'GEL';
   end if;
 
+  select * into v_link
+  from public.request_links
+  where token = p_token and active = true
+  limit 1;
+
+  if not found then raise exception 'Invalid or inactive request link'; end if;
+
   insert into public.client_requests (
-    owner_id,
-    request_link_id,
-    request_token,
-    project_name,
-    client_name,
-    company,
-    email,
-    phone,
-    type,
-    description,
-    features,
-    deadline,
-    budget,
-    flags,
-    notes,
-    analysis
+    owner_id, request_link_id, request_token, project_name, client_name, company, email, phone,
+    type, description, features, deadline, budget, budget_currency, flags, notes, analysis
   )
   values (
-    v_link.owner_id,
-    v_link.id,
-    p_token,
+    v_link.owner_id, v_link.id, p_token,
     nullif(trim(p_payload->>'projectName'), ''),
     nullif(trim(p_payload->>'clientName'), ''),
     nullif(trim(p_payload->>'company'), ''),
@@ -122,25 +109,17 @@ begin
     nullif(trim(p_payload->>'phone'), ''),
     p_payload->>'type',
     nullif(trim(p_payload->>'description'), ''),
-    coalesce(
-      array(select jsonb_array_elements_text(coalesce(p_payload->'features', '[]'::jsonb))),
-      '{}'
-    ),
+    coalesce(array(select jsonb_array_elements_text(coalesce(p_payload->'features', '[]'::jsonb))), '{}'),
     nullif(p_payload->>'deadline', '')::date,
     nullif(trim(p_payload->>'budget'), ''),
-    coalesce(
-      array(select jsonb_array_elements_text(coalesce(p_payload->'flags', '[]'::jsonb))),
-      '{}'
-    ),
+    v_currency,
+    coalesce(array(select jsonb_array_elements_text(coalesce(p_payload->'flags', '[]'::jsonb))), '{}'),
     nullif(trim(p_payload->>'notes'), ''),
     coalesce(p_payload->'analysis', '{}'::jsonb)
   )
   returning id into v_id;
 
-  update public.request_links
-  set submitted_count = submitted_count + 1
-  where id = v_link.id;
-
+  update public.request_links set submitted_count = submitted_count + 1 where id = v_link.id;
   return v_id;
 end;
 $$;
