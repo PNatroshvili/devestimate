@@ -73,7 +73,7 @@ async function generateImage(prompt: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-image-2",
+        model: "gpt-image-1.5",
         prompt,
         n: 1,
         size: "1536x1024",
@@ -151,6 +151,11 @@ Deno.serve(async (req) => {
 
   try {
     const generated = [];
+    await admin
+      .from("client_requests")
+      .update({ mockups: [], mockups_status: "generating", mockups_error: null })
+      .eq("id", request.id);
+
     for (let index = 0; index < slots.length; index += 1) {
       const slot = slots[index];
         const bytes = await generateImage(makePrompt(slot, request));
@@ -187,17 +192,29 @@ Deno.serve(async (req) => {
         path,
         generatedAt: new Date().toISOString(),
       });
+
+      await admin
+        .from("client_requests")
+        .update({ mockups: generated, mockups_status: "generating", mockups_error: null })
+        .eq("id", request.id);
     }
 
     await admin
       .from("client_requests")
-      .update({ mockups: generated })
+      .update({ mockups: generated, mockups_status: "ready", mockups_error: null })
       .eq("id", request.id);
 
     return json({ ok: true, mockups: generated });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Mockup generation failed.";
+    await admin
+      .from("client_requests")
+      .update({ mockups_status: "error", mockups_error: message.slice(0, 2500) })
+      .eq("id", request.id);
+
     return json({
-      error: error instanceof Error ? error.message : "Mockup generation failed.",
-    }, 502);
+      ok: false,
+      error: message,
+    }, 200);
   }
 });
