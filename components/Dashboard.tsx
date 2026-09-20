@@ -48,17 +48,37 @@ export default function Dashboard() {
   const [authenticated, setAuthenticated] = useState(!isSupabaseConfigured);
   const [requestIdFromUrl, setRequestIdFromUrl] = useState<string | null>(null);
 
-  useEffect(() => {
+  const readRequestIdFromLocation = () => {
     const params = new URLSearchParams(window.location.search);
     const requestId = params.get("requestId") || params.get("id");
     const routeMatch = window.location.pathname.match(/^\/requests\/([^/]+)\/?$/);
     const routeRequestId = routeMatch ? decodeURIComponent(routeMatch[1]) : null;
-    const targetRequestId = routeRequestId || requestId;
-    if (targetRequestId) {
-      setRequestIdFromUrl(targetRequestId);
-      setPage("requests");
-    }
+    return routeRequestId || requestId;
+  };
+
+  useEffect(() => {
+    const syncHistory = (event?: PopStateEvent) => {
+      const requestId = readRequestIdFromLocation();
+      const historyPage = event?.state?.page as Page | undefined;
+      setRequestIdFromUrl(requestId);
+      setPage(requestId ? "requests" : (historyPage || "dashboard"));
+    };
+
+    syncHistory();
+    window.addEventListener("popstate", syncHistory);
+    return () => window.removeEventListener("popstate", syncHistory);
   }, []);
+
+  const navigateToPage = (target: Page) => {
+    setRequestIdFromUrl(null);
+    setPage(target);
+    window.history.pushState(
+      { page: target },
+      "",
+      target === "requests" ? "/requests/" : "/",
+    );
+    window.scrollTo(0, 0);
+  };
 
   useEffect(() => {
     if (!supabase) return;
@@ -75,11 +95,18 @@ export default function Dashboard() {
 
   const openProject = (project: StoredProject) => {
     setSelectedProject(project);
-    setPage("detail");
+    navigateToPage("detail");
   };
 
   const openRequest = (requestId: string) => {
-    window.location.href = "/requests/?id=" + encodeURIComponent(requestId);
+    setRequestIdFromUrl(requestId);
+    setPage("requests");
+    window.history.pushState(
+      { page: "requests", requestId },
+      "",
+      "/requests/?id=" + encodeURIComponent(requestId),
+    );
+    window.scrollTo(0, 0);
   };
 
   if (isSupabaseConfigured && authLoading) {
@@ -91,28 +118,26 @@ export default function Dashboard() {
   }
 
   const renderPage = () => {
-    if (page === "new") return <NewProject onBack={() => setPage("dashboard")} />;
-    if (page === "rates") return <PricingRates onBack={() => setPage("dashboard")} />;
-    if (page === "projects") return <Projects onBack={() => setPage("dashboard")} onNew={() => setPage("new")} onOpen={openProject} />;
-    if (page === "templates") return <Templates onBack={() => setPage("dashboard")} onNew={() => setPage("new")} />;
-    if (page === "analytics") return <Analytics onBack={() => setPage("dashboard")} />;
-    if (page === "requests") return <ClientRequests requestIdFromUrl={requestIdFromUrl} standalone={Boolean(requestIdFromUrl && window.location.pathname.startsWith("/requests"))} onBack={() => {
-      if (window.location.pathname.startsWith("/requests")) {
-        window.location.href = "/";
-      } else {
-        setRequestIdFromUrl(null);
-        setPage("requests");
-      }
-    }} />;
+    if (page === "new") return <NewProject onBack={() => navigateToPage("dashboard")} />;
+    if (page === "rates") return <PricingRates onBack={() => navigateToPage("dashboard")} />;
+    if (page === "projects") return <Projects onBack={() => navigateToPage("dashboard")} onNew={() => navigateToPage("new")} onOpen={openProject} />;
+    if (page === "templates") return <Templates onBack={() => navigateToPage("dashboard")} onNew={() => navigateToPage("new")} />;
+    if (page === "analytics") return <Analytics onBack={() => navigateToPage("dashboard")} />;
+    if (page === "requests") return <ClientRequests
+      requestIdFromUrl={requestIdFromUrl}
+      standalone={Boolean(requestIdFromUrl)}
+      onOpenRequest={openRequest}
+      onBack={() => navigateToPage("dashboard")}
+    />;
     if (page === "detail" && selectedProject) return <ProjectDetail project={selectedProject} onBack={() => setPage("projects")} />;
 
     return (
       <DashboardHome
-        onNew={() => setPage("new")}
-        onProjects={() => setPage("projects")}
-        onRates={() => setPage("rates")}
-        onAnalytics={() => setPage("analytics")}
-        onRequests={() => setPage("requests")}
+        onNew={() => navigateToPage("new")}
+        onProjects={() => navigateToPage("projects")}
+        onRates={() => navigateToPage("rates")}
+        onAnalytics={() => navigateToPage("analytics")}
+        onRequests={() => navigateToPage("requests")}
         onOpenRequest={openRequest}
       />
     );
@@ -133,7 +158,7 @@ export default function Dashboard() {
             <a
               key={target}
               className={page === target || (target === "projects" && page === "detail") ? "active" : ""}
-              onClick={() => setPage(target)}
+              onClick={() => navigateToPage(target)}
             >
               <Icon />
               <span>{label}</span>
