@@ -41,59 +41,6 @@ function listHtml(items: unknown[]) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "GET") {
-    if (!resendApiKey) return json({ ok: false, provider: "resend", reason: "RESEND_API_KEY missing" }, 200);
-    const openaiKey = Deno.env.get("OPENAI_API_KEY") || "";
-    if (!openaiKey) return json({ ok: false, provider: "openai", reason: "OPENAI_API_KEY missing" }, 200);
-    const [baseResponse, textModelResponse, imageModelResponse] = await Promise.all([
-      fetch("https://api.openai.com/v1/models", { headers: { Authorization: "Bearer " + openaiKey } }),
-      fetch("https://api.openai.com/v1/models/gpt-5.4", { headers: { Authorization: "Bearer " + openaiKey } }),
-      fetch("https://api.openai.com/v1/models/gpt-image-1.5", { headers: { Authorization: "Bearer " + openaiKey } }),
-    ]);
-    const detail = baseResponse.ok ? null : (await baseResponse.text()).slice(0, 1500);
-    const textDetail = textModelResponse.ok ? null : (await textModelResponse.text()).slice(0, 1500);
-    const imageDetail = imageModelResponse.ok ? null : (await imageModelResponse.text()).slice(0, 1500);
-
-    const textProbe = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + openaiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-5.4",
-        input: "Reply with the single word OK.",
-        text: { format: { type: "json_schema", name: "probe", strict: true, schema: { type: "object", additionalProperties: false, properties: { value: { type: "string" } }, required: ["value"] } } },
-        reasoning: { effort: "low" },
-      }),
-    });
-    const textProbeDetail = textProbe.ok ? null : (await textProbe.text()).slice(0, 2000);
-
-    const imageProbe = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + openaiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-image-1.5",
-        prompt: "A simple clean blue web app dashboard card on a white background, UI mockup, no text.",
-        n: 1,
-        size: "1024x1024",
-        quality: "low",
-        output_format: "jpeg",
-        output_compression: 80,
-        background: "opaque",
-      }),
-    });
-    const imageProbeDetail = imageProbe.ok ? null : (await imageProbe.text()).slice(0, 2200);
-
-    return json({
-      ok: baseResponse.ok && textModelResponse.ok && imageModelResponse.ok && textProbe.ok && imageProbe.ok,
-      provider: "openai",
-      status: baseResponse.status,
-      textModel: { ok: textModelResponse.ok, status: textModelResponse.status, detail: textDetail },
-      imageModel: { ok: imageModelResponse.ok, status: imageModelResponse.status, detail: imageDetail },
-      textProbe: { ok: textProbe.ok, status: textProbe.status, detail: textProbeDetail },
-      imageProbe: { ok: imageProbe.ok, status: imageProbe.status, detail: imageProbeDetail },
-      detail,
-    }, 200);
-  }
-
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
