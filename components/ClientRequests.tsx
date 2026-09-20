@@ -233,7 +233,7 @@ function RequestDetailModal({ request, onClose }: { request: ClientRequest; onCl
               <Info label="პროექტის სახელი" value={request.projectName} />
               <Info label="პროექტის ტიპი" value={request.type} />
               <Info label="სასურველი დასრულების ვადა" value={request.deadline || "არ არის მითითებული"} />
-              <Info label="სასურველი ბიუჯეტი" value={request.budget || "არ არის მითითებული"} emphasis />
+              <Info label="სასურველი ბიუჯეტი" value={request.budget ? `${request.budgetCurrency} ${request.budget}` : "არ არის მითითებული"} emphasis />
             </div>
             <div className="request-modal-field request-modal-wide"><span>პროექტის სრული აღწერა</span><p>{request.description || "არ არის მითითებული"}</p></div>
           </section>
@@ -275,7 +275,7 @@ function RequestDetailModal({ request, onClose }: { request: ClientRequest; onCl
               <div><span>შეფასების საათები</span><strong>{analysis?.hours || "—"} სთ</strong></div>
               <div><span>სირთულე</span><strong>{analysis?.complexity || "—"}/10</strong></div>
               <div><span>შიდა ფასი</span><strong>{price ? "$" + Math.round(price.final).toLocaleString() : "—"}</strong></div>
-              <div><span>კლიენტის ბიუჯეტი</span><strong>{request.budget || "—"}</strong></div>
+              <div><span>კლიენტის ბიუჯეტი</span><strong>{request.budget ? `${request.budgetCurrency} ${request.budget}` : "—"}</strong></div>
             </div>
             {analysis?.summary && <div className="request-modal-field request-modal-wide"><span>AI-ის შეჯამება</span><p>{analysis.summary}</p></div>}
             {analysis?.rationale && <div className="request-modal-field request-modal-wide"><span>ტექნოლოგიური არჩევანის დასაბუთება</span><p>{analysis.rationale}</p></div>}
