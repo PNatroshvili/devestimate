@@ -44,9 +44,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  if (!resendApiKey) {
-    return json({ error: "RESEND_API_KEY is not configured" }, 503);
-  }
+  if (!resendApiKey) return json({ error: "RESEND_API_KEY is not configured" }, 503);
 
   let body: Record<string, unknown>;
   try {
@@ -57,10 +55,7 @@ Deno.serve(async (req) => {
 
   const requestId = String(body.requestId || "").trim();
   const requestToken = String(body.requestToken || "").trim();
-
-  if (!requestId || !requestToken) {
-    return json({ error: "requestId and requestToken are required" }, 400);
-  }
+  if (!requestId || !requestToken) return json({ error: "requestId and requestToken are required" }, 400);
 
   const { data: request, error } = await admin
     .from("client_requests")
@@ -76,8 +71,7 @@ Deno.serve(async (req) => {
   const features = Array.isArray(request.features) ? request.features : [];
   const flags = Array.isArray(request.flags) ? request.flags : [];
   const analysis = request.analysis && typeof request.analysis === "object" ? request.analysis as Record<string, unknown> : {};
-
-  const dashboardUrl = "https://estimate.skup.ge/";
+  const dashboardUrl = "https://estimate.skup.ge/?requestId=" + encodeURIComponent(String(request.id));
   const subject = "🆕 ახალი პროექტის მოთხოვნა — " + String(request.project_name || "ახალი მოთხოვნა");
 
   const html =
@@ -90,11 +84,7 @@ Deno.serve(async (req) => {
         "</div>" +
         "<div style=\"padding:26px 28px\">" +
           "<h2 style=\"margin:0 0 14px;font-size:17px\">პროექტი</h2>" +
-          "<div style=\"background:#f8f9fb;border-radius:12px;padding:16px\">" +
-            "<div style=\"font-size:22px;font-weight:700\">" + esc(request.project_name) + "</div>" +
-            "<div style=\"margin-top:6px;color:#6b7280\">" + esc(request.type) + "</div>" +
-          "</div>" +
-
+          "<div style=\"background:#f8f9fb;border-radius:12px;padding:16px\"><div style=\"font-size:22px;font-weight:700\">" + esc(request.project_name) + "</div><div style=\"margin-top:6px;color:#6b7280\">" + esc(request.type) + "</div></div>" +
           "<div style=\"height:22px\"></div>" +
           "<h2 style=\"margin:0 0 14px;font-size:17px\">კლიენტი</h2>" +
           "<table style=\"width:100%;border-collapse:collapse;font-size:14px\">" +
@@ -103,28 +93,19 @@ Deno.serve(async (req) => {
             "<tr><td style=\"padding:7px 0;color:#737985\">ელფოსტა</td><td style=\"padding:7px 0\">" + esc(request.email || "—") + "</td></tr>" +
             "<tr><td style=\"padding:7px 0;color:#737985\">ტელეფონი</td><td style=\"padding:7px 0\">" + esc(request.phone || "—") + "</td></tr>" +
           "</table>" +
-
           "<div style=\"height:22px\"></div>" +
           "<h2 style=\"margin:0 0 14px;font-size:17px\">მოთხოვნა</h2>" +
           "<div style=\"font-size:14px;line-height:1.7;white-space:pre-wrap\">" + esc(request.description) + "</div>" +
-
           "<div style=\"height:22px\"></div>" +
-          "<table style=\"width:100%;border-collapse:collapse;font-size:14px\">" +
-            "<tr>" +
-              "<td style=\"vertical-align:top;width:50%;padding:14px;border:1px solid #eceef2;border-radius:12px\"><div style=\"color:#737985\">ჩაბარების ვადა</div><div style=\"margin-top:5px;font-weight:700\">" + esc(request.deadline || "—") + "</div></td>" +
-              "<td style=\"width:16px\"></td>" +
-              "<td style=\"vertical-align:top;width:50%;padding:14px;border:1px solid #eceef2;border-radius:12px\"><div style=\"color:#737985\">ბიუჯეტი</div><div style=\"margin-top:5px;font-weight:700\">" + esc(request.budget ? String(request.budget_currency || "GEL") + " " + String(request.budget) : "—") + "</div></td>" +
-            "</tr>" +
-          "</table>" +
-
+          "<table style=\"width:100%;border-collapse:collapse;font-size:14px\"><tr>" +
+            "<td style=\"vertical-align:top;width:50%;padding:14px;border:1px solid #eceef2\"><div style=\"color:#737985\">ჩაბარების ვადა</div><div style=\"margin-top:5px;font-weight:700\">" + esc(request.deadline || "—") + "</div></td>" +
+            "<td style=\"width:16px\"></td>" +
+            "<td style=\"vertical-align:top;width:50%;padding:14px;border:1px solid #eceef2\"><div style=\"color:#737985\">ბიუჯეტი</div><div style=\"margin-top:5px;font-weight:700\">" + esc(request.budget ? String(request.budget_currency || "GEL") + " " + String(request.budget) : "—") + "</div></td>" +
+          "</tr></table>" +
           "<div style=\"height:22px\"></div>" +
-          "<h2 style=\"margin:0 0 14px;font-size:17px\">ძირითადი ფუნქციები</h2>" +
-          listHtml(features) +
-
+          "<h2 style=\"margin:0 0 14px;font-size:17px\">ძირითადი ფუნქციები</h2>" + listHtml(features) +
           "<div style=\"height:18px\"></div>" +
-          "<h2 style=\"margin:0 0 14px;font-size:17px\">დამატებითი მოთხოვნები</h2>" +
-          listHtml(flags) +
-
+          "<h2 style=\"margin:0 0 14px;font-size:17px\">დამატებითი მოთხოვნები</h2>" + listHtml(flags) +
           "<div style=\"height:18px\"></div>" +
           "<h2 style=\"margin:0 0 14px;font-size:17px\">საწყისი შეფასება</h2>" +
           "<table style=\"width:100%;border-collapse:collapse;font-size:14px\">" +
@@ -132,17 +113,11 @@ Deno.serve(async (req) => {
             "<tr><td style=\"padding:6px 0;color:#737985\">სირთულე</td><td style=\"padding:6px 0;font-weight:700\">" + esc(analysis.complexity ? String(analysis.complexity) + " / 10" : "—") + "</td></tr>" +
             "<tr><td style=\"padding:6px 0;color:#737985\">Confidence</td><td style=\"padding:6px 0;font-weight:700\">" + esc(analysis.confidence ? String(analysis.confidence) + "%" : "—") + "</td></tr>" +
           "</table>" +
-
-          (request.notes
-            ? "<div style=\"height:18px\"></div><h2 style=\"margin:0 0 14px;font-size:17px\">შენიშვნა</h2><div style=\"font-size:14px;line-height:1.7;white-space:pre-wrap\">" + esc(request.notes) + "</div>"
-            : "") +
-
+          (request.notes ? "<div style=\"height:18px\"></div><h2 style=\"margin:0 0 14px;font-size:17px\">შენიშვნა</h2><div style=\"font-size:14px;line-height:1.7;white-space:pre-wrap\">" + esc(request.notes) + "</div>" : "") +
           "<div style=\"height:28px\"></div>" +
           "<a href=\"" + dashboardUrl + "\" style=\"display:inline-block;background:#17191f;color:#fff;text-decoration:none;padding:13px 18px;border-radius:10px;font-weight:700\">Open DevEstimate</a>" +
         "</div>" +
-        "<div style=\"padding:18px 28px;border-top:1px solid #eceef2;color:#858b95;font-size:12px\">Request ID: " +
-          esc(request.id) + "<br/>" + esc(new Date(request.created_at).toLocaleString("ka-GE")) +
-        "</div>" +
+        "<div style=\"padding:18px 28px;border-top:1px solid #eceef2;color:#858b95;font-size:12px\">Request ID: " + esc(request.id) + "<br/>" + esc(new Date(request.created_at).toLocaleString("ka-GE")) + "</div>" +
       "</div>" +
     "</div>";
 
@@ -161,7 +136,6 @@ Deno.serve(async (req) => {
     "",
     "ჩაბარების ვადა: " + String(request.deadline || "—"),
     "ბიუჯეტი: " + (request.budget ? String(request.budget_currency || "GEL") + " " + String(request.budget) : "—"),
-    "",
     "ფუნქციები: " + (features.length ? features.join(", ") : "—"),
     "დამატებითი მოთხოვნები: " + (flags.length ? flags.join(", ") : "—"),
     "",
@@ -176,10 +150,7 @@ Deno.serve(async (req) => {
 
   const resend = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: {
-      Authorization: "Bearer " + resendApiKey,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: "Bearer " + resendApiKey, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: fromEmail,
       to: [toEmail],
