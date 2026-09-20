@@ -50,7 +50,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const requestId = params.get("requestId");
+    const requestId = params.get("requestId") || params.get("id");
     const routeMatch = window.location.pathname.match(/^\/requests\/([^/]+)\/?$/);
     const routeRequestId = routeMatch ? decodeURIComponent(routeMatch[1]) : null;
     const targetRequestId = routeRequestId || requestId;
