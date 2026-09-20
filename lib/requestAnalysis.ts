@@ -6,6 +6,9 @@ export type RequestAnalysis = {
   missing: string[];
   stack: string[];
   groups: { name: string; count: number; hours: number }[];
+  source?: "ai" | "rules";
+  summary?: string;
+  rationale?: string;
 };
 
 export function analyzeClientRequest(
