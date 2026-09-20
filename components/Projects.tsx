@@ -36,7 +36,7 @@ export default function Projects({onBack,onNew,onOpen}:{onBack:()=>void;onNew:()
         <div className="project-meta"><span><Clock3/> {p.hours}h</span><span><DollarSign/> ${p.value.toLocaleString()}</span><span><CalendarDays/> {p.deadline||"Flexible"}</span></div>
         <span className={"status "+p.status.toLowerCase().replaceAll(" ","-")}>{p.status}</span>
         {!p.id.startsWith("demo-") && <span className="delete-project" title="Delete" onClick={e=>{e.stopPropagation();remove(p.id)}}><Trash2/></span>}
-      </div>)}
+      </button>)}
       {!visible.length && <div className="empty-projects"><FolderKanban/><h3>No projects found</h3><p>Try another search or create a new project.</p><button className="primary" onClick={onNew}><Plus/> New Project</button></div>}
     </div>
   </section>;
