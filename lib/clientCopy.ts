@@ -67,7 +67,7 @@ export const CLIENT_COPY = {
   en: {
     request: "Project request",
     secure: "Secure form",
-    heroTitle: "Tell us what you want to build.",
+    heroTitle: "პროექტის შესახებ",
     heroText: "Please complete the form with as much detail as possible. Your answers help us understand the project's goals, scope and technical needs.",
     noPrice: "This form does not show project pricing or internal estimates.",
     about: "About you",
