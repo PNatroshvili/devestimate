@@ -195,7 +195,7 @@ export default function ClientRequests({ onBack, requestIdFromUrl, standalone = 
             ) : requests.length ? (
               <div className="request-list">
                 {requests.map((request) => (
-                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => { window.location.href = "/requests/" + encodeURIComponent(request.id); }}>
+                  <button key={request.id} className={"request-row " + (selected?.id === request.id ? "selected" : "")} onClick={() => { window.location.href = "/requests/?id=" + encodeURIComponent(request.id); }}>
                     <div className="request-icon"><ClipboardList /></div>
                     <div className="request-row-main"><strong>{request.projectName}</strong><small>{request.clientName}{request.company ? " · " + request.company : ""} · {request.type}</small></div>
                     <div className="request-row-meta"><span>{new Date(request.createdAt).toLocaleDateString("ka-GE")}</span><b>{request.status}</b></div>
