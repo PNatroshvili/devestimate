@@ -9,7 +9,7 @@ const samples: StoredProject[] = [
   {id:"demo-2",name:"Restaurant Website",client:"Demo Client",type:"WordPress",description:"Business website",features:["Pages","Menu"],flags:["SEO / Analytics"],deadline:"2026-10-05",budget:"1200",hours:32,complexity:3,value:1200,createdAt:"2026-09-19",status:"Completed"},
 ];
 
-export default function Projects({onBack,onNew}:{onBack:()=>void;onNew:()=>void}) {
+export default function Projects({onBack,onNew,onOpen}:{onBack:()=>void;onNew:()=>void;onOpen:(project:StoredProject)=>void}) {
   const [items,setItems]=useState<StoredProject[]>([]);
   const [query,setQuery]=useState("");
   const [filter,setFilter]=useState("All");
@@ -31,11 +31,11 @@ export default function Projects({onBack,onNew}:{onBack:()=>void;onNew:()=>void}
       <div className="filters">{["All","Analysis","Proposal","In Progress","Completed"].map(x=><button className={filter===x?"active":""} onClick={()=>setFilter(x)} key={x}>{x}</button>)}</div>
     </div>
     <div className="project-list">
-      {visible.map(p=><div className="project-row" key={p.id}>
+      {visible.map(p=><button className="project-row project-row-button" key={p.id} onClick={()=>onOpen(p)}>
         <div className="project-main"><div className="project-mark"><FolderKanban/></div><div><strong>{p.name}</strong><span>{p.client||"No client"} · {p.type}</span></div></div>
         <div className="project-meta"><span><Clock3/> {p.hours}h</span><span><DollarSign/> ${p.value.toLocaleString()}</span><span><CalendarDays/> {p.deadline||"Flexible"}</span></div>
         <span className={"status "+p.status.toLowerCase().replaceAll(" ","-")}>{p.status}</span>
-        {!p.id.startsWith("demo-") && <button className="delete-project" title="Delete" onClick={()=>remove(p.id)}><Trash2/></button>}
+        {!p.id.startsWith("demo-") && <span className="delete-project" title="Delete" onClick={e=>{e.stopPropagation();remove(p.id)}}><Trash2/></span>}
       </div>)}
       {!visible.length && <div className="empty-projects"><FolderKanban/><h3>No projects found</h3><p>Try another search or create a new project.</p><button className="primary" onClick={onNew}><Plus/> New Project</button></div>}
     </div>
