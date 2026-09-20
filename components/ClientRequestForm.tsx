@@ -10,10 +10,7 @@ import { CLIENT_COPY, type ClientLanguage } from "../lib/clientCopy";
 function Logo() {
   return (
     <span className="skup-logo" aria-label="SKUP Studio">
-      <svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
-        <path d="M13 13 19 18 13 23" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M22 23h5" stroke="var(--accent)" strokeWidth="1.7" strokeLinecap="round" />
-      </svg>
+      <img src="/skup-mark.svg" alt="" />
       <span><b>SKUP</b><small>Studio</small></span>
     </span>
   );
