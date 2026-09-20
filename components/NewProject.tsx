@@ -160,7 +160,7 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
         <button className="back-link" onClick={onBack}><ArrowLeft /> Back to dashboard</button>
         <small>PROJECT INTAKE</small>
         <h1>Create New Project</h1>
-        <p>Capture the brief first. DevEstimate will turn it into an actionable estimate.</p>
+        <p>Capture the brief first. SKUP Studio will turn it into an actionable estimate.</p>
       </div>
 
       <div className="stepper">
