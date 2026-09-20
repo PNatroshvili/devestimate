@@ -148,212 +148,162 @@ export default function Dashboard() {
   );
 }
 
-function DashboardHome({
-  onNew,
-  onProjects,
-  onRates,
-  onAnalytics,
-  onRequests,
-}: {
-  onNew: () => void;
-  onProjects: () => void;
-  onRates: () => void;
-  onAnalytics: () => void;
-  onRequests: () => void;
-}) {
-  const [requests, setRequests] = useState<ClientRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+"use client";
 
-  useEffect(() => {
-    let alive = true;
-    const refresh = async () => {
-      try {
-        const next = await loadClientRequests();
-        if (alive) setRequests(next);
-      } finally {
-        if (alive) setLoading(false);
+function DashboardHome({onNew,onProjects,onRates,onAnalytics,onRequests,onOpenRequest}:{onNew:()=>void;onProjects:()=>void;onRates:()=>void;onAnalytics:()=>void;onRequests:()=>void;onOpenRequest:(requestId:string)=>void}) {
+  const [requests,setRequests]=useState<ClientRequest[]>([]);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    let alive=true;
+    const refresh=async()=>{
+      try{
+        const next=await loadClientRequests();
+        if(alive)setRequests(next);
+      }finally{
+        if(alive)setLoading(false);
       }
     };
     void refresh();
-    const interval = window.setInterval(refresh, 30000);
-    return () => {
-      alive = false;
-      window.clearInterval(interval);
-    };
-  }, []);
+    const interval=window.setInterval(refresh,30000);
+    return()=>{alive=false;window.clearInterval(interval)};
+  },[]);
 
-  const stats = useMemo(() => {
-    const analyzed = requests.filter((request) => request.analysis?.hours);
-    const converted = requests.filter((request) => request.status === "Converted").length;
-    const conversion = requests.length ? Math.round((converted / requests.length) * 100) : 0;
-    const rates = loadRates();
-    const value = analyzed.reduce((sum, request) => {
-      const analysis = request.analysis;
-      if (!analysis) return sum;
-      const complexity = 1 + (analysis.complexity - 5) * 0.04;
-      return sum + priceEstimate(analysis.hours, request.type, rates, complexity).final;
-    }, 0);
+  const rates=useMemo(()=>loadRates(),[]);
+  const analyzed=requests.filter((request)=>Boolean(request.analysis?.hours));
+  const converted=requests.filter((request)=>request.status==="Converted");
+  const estimatedRevenue=analyzed.reduce((sum,request)=>{
+    if(!request.analysis)return sum;
+    return sum+priceEstimate(
+      request.analysis.hours,
+      request.type,
+      rates,
+      1+(request.analysis.complexity-5)*0.04,
+    ).final;
+  },0);
+  const conversion=requests.length?Math.round(converted.length/requests.length*100):0;
+  const chart=buildRequestChart(requests);
+  const recent=requests.slice(0,5);
 
-    return {
-      total: requests.length,
-      newCount: requests.filter((request) => request.status === "New").length,
-      analyzed: analyzed.length,
-      conversion,
-      value,
-    };
-  }, [requests]);
+  return <section className="content dashboard-target-page">
+    <header className="target-topbar">
+      <div className="target-search"><Search/><input placeholder="Search requests, projects..."/></div>
+      <button className="target-period">Last 30 days <ChevronDown/></button>
+      <button className="target-bell" aria-label="Notifications"><Bell/></button>
+      <i className="target-avatar">P</i>
+    </header>
 
-  const recent = requests.slice(0, 5);
-  const greetingHour = new Date().getHours();
-  const greeting = greetingHour < 12 ? "Good morning" : greetingHour < 18 ? "Good afternoon" : "Good evening";
+    <div className="target-heading">
+      <div>
+        <small>OVERVIEW</small>
+        <h1>Dashboard</h1>
+        <p>Here's what's happening with your projects.</p>
+      </div>
+      <button className="target-period target-heading-period">Last 30 days <ChevronDown/></button>
+    </div>
 
-  return (
-    <section className="content dashboard-home-page">
-      <header className="dashboard-toolbar">
-        <div className="dashboard-search">
-          <Search />
-          <input placeholder="Search requests, projects..." />
+    <div className="target-kpis">
+      <TargetKpi label="Client Requests" value={String(requests.length)} delta="+8%" tone="blue"/>
+      <TargetKpi label="Estimated Projects" value={String(analyzed.length)} delta="+12%" tone="green"/>
+      <TargetKpi label="Conversion Rate" value={conversion+"%"} delta={requests.length?String(converted.length)+" converted":"—"} tone="purple"/>
+      <TargetKpi label="Estimated Revenue" value={"$"+Math.round(estimatedRevenue).toLocaleString()} delta="Based on estimates" tone="gold"/>
+    </div>
+
+    <section className="target-card target-chart-card">
+      <div className="target-card-head">
+        <div><h2>Client Requests</h2><p>Requests received during the last 30 days.</p></div>
+        <button className="target-chart-period">Daily <ChevronDown/></button>
+      </div>
+      <div className="target-chart">
+        <div className="target-y"><span>{chart.max}</span><span>{Math.max(0,Math.ceil(chart.max/2))}</span><span>0</span></div>
+        <div className="target-plot">
+          <div className="target-gridline g1"/><div className="target-gridline g2"/><div className="target-gridline g3"/><div className="target-gridline g4"/>
+          <div className="target-bars">
+            {chart.points.map((point)=><div key={point.key} className="target-bar-wrap" title={point.label+": "+point.value+" request"+(point.value===1?"":"s")}>
+              <i style={{height:point.height+"%"}}/>
+            </div>)}
+          </div>
+          <div className="target-axis">
+            {chart.labels.map((label)=><span key={label}>{label}</span>)}
+          </div>
         </div>
-        <button className="dashboard-period"><span>Last 30 days</span><ChevronDown /></button>
-        <button className="dashboard-bell" aria-label="Notifications"><Bell /></button>
-        <i className="dashboard-avatar">P</i>
-      </header>
-
-      <div className="dashboard-hero">
-        <div>
-          <small>OVERVIEW</small>
-          <h1>{greeting}, Paata <span>👋</span></h1>
-          <p>Here’s what’s happening with your projects today.</p>
-        </div>
-        <button className="primary dashboard-new-request" onClick={onRequests}><Plus /> New request</button>
-      </div>
-
-      <div className="dashboard-kpis">
-        <KpiCard icon={<ClipboardList />} iconClass="blue" label="Client requests" value={String(stats.total)} delta="+8% this month" />
-        <KpiCard icon={<FileText />} iconClass="green" label="Analyzed requests" value={String(stats.analyzed)} delta="+12% this month" />
-        <KpiCard icon={<TrendingUp />} iconClass="purple" label="Conversion rate" value={String(stats.conversion) + "%"} delta={stats.total ? String(stats.newCount) + " new" : "No conversions yet"} />
-        <KpiCard icon={<CircleDollarSign />} iconClass="gold" label="Estimated revenue" value={"$" + Math.round(stats.value).toLocaleString()} delta="Based on internal estimates" />
-      </div>
-
-      <div className="dashboard-primary-grid">
-        <section className="dashboard-card dashboard-requests-card">
-          <div className="dashboard-card-head">
-            <div>
-              <h2>Recent client requests</h2>
-              <p>Latest requests received from the public intake form.</p>
-            </div>
-            <button onClick={onRequests}>View all</button>
-          </div>
-
-          {loading ? (
-            <div className="dashboard-request-empty">Loading requests…</div>
-          ) : recent.length ? (
-            <div className="dashboard-request-table">
-              <div className="dashboard-request-table-head">
-                <span>Project</span><span>Client</span><span>Type</span><span>Status</span><span>Date</span>
-              </div>
-              {recent.map((request) => (
-                <button key={request.id} className="dashboard-request-row" onClick={onRequests}>
-                  <span className="dashboard-project-cell"><i><ClipboardList /></i><strong>{request.projectName}</strong></span>
-                  <span>{request.clientName || "—"}</span>
-                  <span>{request.type}</span>
-                  <span><Status value={request.status} /></span>
-                  <span>{formatRelative(request.createdAt)}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="dashboard-request-empty">
-              <ClipboardList />
-              <strong>No client requests yet</strong>
-              <span>Your next public request will appear here.</span>
-            </div>
-          )}
-        </section>
-
-        <section className="dashboard-side-column">
-          <MiniChart title="Client requests" value={stats.total} colorClass="blue-line" points="M0 126 C35 110 55 120 82 102 S135 108 160 82 S220 92 246 56 S300 78 330 39" />
-          <MiniChart title="Conversion rate" value={String(stats.conversion) + "%"} colorClass="green-line" points="M0 126 C35 120 55 122 84 111 S135 118 162 96 S218 99 250 86 S300 66 330 54" />
-        </section>
-      </div>
-
-      <div className="dashboard-bottom-grid">
-        <section className="dashboard-card dashboard-performance-card">
-          <div className="dashboard-card-head">
-            <div>
-              <h2>Performance</h2>
-              <p>Requests, analysis and delivery signals.</p>
-            </div>
-            <button onClick={onAnalytics}>Open analytics</button>
-          </div>
-          <div className="dashboard-chart">
-            <div className="dashboard-chart-labels"><span>{Math.max(10, stats.total + 10)}</span><span>{Math.max(5, Math.round(stats.total / 2))}</span><span>0</span></div>
-            <div className="dashboard-chart-area">
-              {[1,2,3].map((n) => <span key={n} />)}
-              <svg viewBox="0 0 640 180" preserveAspectRatio="none">
-                <path d="M0 150 C55 144 78 154 128 132 S188 143 238 110 S300 124 350 100 S418 122 470 72 S560 85 640 34" fill="none" stroke="currentColor" strokeWidth="3" />
-                <path d="M0 150 C55 144 78 154 128 132 S188 143 238 110 S300 124 350 100 S418 122 470 72 S560 85 640 34 L640 180 L0 180 Z" fill="currentColor" opacity=".08" />
-              </svg>
-              <div className="dashboard-chart-axis"><span>Oct 1</span><span>Oct 8</span><span>Oct 15</span><span>Oct 22</span><span>Oct 29</span></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="dashboard-card dashboard-actions-card">
-          <div className="dashboard-card-head">
-            <div>
-              <h2>Quick actions</h2>
-              <p>Common workspace actions.</p>
-            </div>
-          </div>
-          <div className="dashboard-actions">
-            <button onClick={onNew}><Plus /><span><strong>New project</strong><small>Start a fresh estimate</small></span></button>
-            <button onClick={onRequests}><ClipboardList /><span><strong>Client requests</strong><small>Review incoming briefs</small></span></button>
-            <button onClick={onAnalytics}><BarChart3 /><span><strong>Analytics</strong><small>Check estimation accuracy</small></span></button>
-            <button onClick={onRates}><Settings /><span><strong>Pricing</strong><small>Update rates and rules</small></span></button>
-          </div>
-        </section>
       </div>
     </section>
-  );
-}
 
-function KpiCard({ icon, iconClass, label, value, delta }: { icon: React.ReactNode; iconClass: string; label: string; value: string; delta: string }) {
-  return (
-    <div className="dashboard-kpi">
-      <div className={"dashboard-kpi-icon " + iconClass}>{icon}</div>
-      <div className="dashboard-kpi-copy"><span>{label}</span><strong>{value}</strong><small>{delta}</small></div>
-    </div>
-  );
-}
-
-function MiniChart({ title, value, colorClass, points }: { title: string; value: string | number; colorClass: string; points: string }) {
-  return (
-    <div className="dashboard-card dashboard-mini-chart">
-      <div>
-        <span>{title}</span>
-        <button aria-label="Dismiss">×</button>
+    <section className="target-card target-recent-card">
+      <div className="target-card-head">
+        <div><h2>Recent client requests</h2><p>Latest requests from the public intake form.</p></div>
+        <button onClick={onRequests}>View all</button>
       </div>
-      <strong>{value}</strong>
-      <svg viewBox="0 0 330 145" preserveAspectRatio="none" className={colorClass}>
-        <path d={points} fill="none" stroke="currentColor" strokeWidth="3" />
-      </svg>
-    </div>
-  );
+      {loading ? (
+        <div className="target-empty">Loading requests…</div>
+      ) : recent.length ? (
+        <div className="target-table">
+          <div className="target-table-head"><span>Project</span><span>Client</span><span>Type</span><span>Status</span><span>Date</span></div>
+          {recent.map((request)=>
+            <button key={request.id} className="target-table-row" onClick={()=>onOpenRequest(request.id)}>
+              <strong>{request.projectName}</strong>
+              <span>{request.clientName||"—"}</span>
+              <span>{request.type==="Web"?"Web App":request.type}</span>
+              <span><Status v={request.status}/></span>
+              <span>{formatTargetDate(request.createdAt)}</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="target-empty"><ClipboardList/><strong>No client requests yet</strong><span>Your next public request will appear here.</span></div>
+      )}
+    </section>
+  </section>;
 }
 
-function Status({ value }: { value: ClientRequest["status"] }) {
-  return <span className={"dashboard-status " + value.toLowerCase()}>{value}</span>;
+function TargetKpi({label,value,delta,tone}:{label:string;value:string;delta:string;tone:string}){
+  return <div className={"target-kpi "+tone}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+    <small>{delta}</small>
+  </div>;
 }
 
-function formatRelative(value: string) {
-  const created = new Date(value).getTime();
-  const diff = Math.max(0, Date.now() - created);
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return String(Math.max(1, minutes)) + "m ago";
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return String(hours) + "h ago";
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "1d ago";
-  return String(days) + "d ago";
+function buildRequestChart(requests:ClientRequest[]){
+  const now=Date.now();
+  const days=Array.from({length:30},(_,index)=>{
+    const date=new Date(now-(29-index)*86400000);
+    date.setHours(0,0,0,0);
+    return date;
+  });
+  const counts=days.map((date)=>{
+    const next=new Date(date); next.setDate(next.getDate()+1);
+    return requests.filter((request)=>{
+      const created=new Date(request.createdAt).getTime();
+      return created>=date.getTime() && created<next.getTime();
+    }).length;
+  });
+  const max=Math.max(1,...counts);
+  const points=days.map((date,index)=>({
+    key:date.toISOString(),
+    label:date.toLocaleDateString("en-US",{month:"short",day:"numeric"}),
+    value:counts[index],
+    height:counts[index]===0?3:Math.max(7,counts[index]/max*100),
+  }));
+  const labelIndexes=[0,7,14,21,29];
+  return {
+    max,
+    points,
+    labels:labelIndexes.map((index)=>days[index].toLocaleDateString("en-US",{month:"short",day:"numeric"})),
+  };
+}
+
+function formatTargetDate(value:string){
+  const date=new Date(value);
+  const now=Date.now();
+  const diff=Math.max(0,now-date.getTime());
+  const minutes=Math.floor(diff/60000);
+  if(minutes<60)return Math.max(1,minutes)+" min";
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return hours+"h ago";
+  const days=Math.floor(hours/24);
+  if(days===1)return "1d ago";
+  if(days<7)return days+"d ago";
+  return date.toLocaleDateString("en-US",{month:"short",day:"2-digit"});
 }
