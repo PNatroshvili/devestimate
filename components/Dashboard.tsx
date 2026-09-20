@@ -148,8 +148,6 @@ export default function Dashboard() {
   );
 }
 
-"use client";
-
 function DashboardHome({onNew,onProjects,onRates,onAnalytics,onRequests,onOpenRequest}:{onNew:()=>void;onProjects:()=>void;onRates:()=>void;onAnalytics:()=>void;onRequests:()=>void;onOpenRequest:(requestId:string)=>void}) {
   const [requests,setRequests]=useState<ClientRequest[]>([]);
   const [loading,setLoading]=useState(true);
