@@ -56,6 +56,18 @@ export default function ClientRequests({ onBack, requestIdFromUrl }: { onBack: (
         await updateClientRequestAnalysis(request.id, next.analysis);
         setRequests((current) => current.map((item) => item.id === request.id ? next : item));
         setSelected((current) => current?.id === request.id ? next : current);
+
+        // Visual product concepts are generated automatically after the technical AI analysis.
+        // Keep this asynchronous so the request appears immediately while the mockups render.
+        void generateRequestMockupsWithAI(request.id)
+          .then((mockups) => {
+            const withMockups = { ...next, mockups };
+            setRequests((current) => current.map((item) => item.id === request.id ? withMockups : item));
+            setSelected((current) => current?.id === request.id ? withMockups : current);
+          })
+          .catch(() => {
+            // Mockup generation is best-effort; the request and technical analysis remain available.
+          });
       } catch {
         // Keep the deterministic analysis as a safe fallback.
       }
@@ -239,7 +251,6 @@ function RequestDetailModal({ request, onClose, onMessageSaved, onMockupsSaved }
     const hydrate = async () => {
       if (!request.mockups?.length) {
         setMockups([]);
-        if (!mockupLoading && analysis) void generateMockups();
         return;
       }
       const signed = await signRequestMockupUrls(request.mockups);
