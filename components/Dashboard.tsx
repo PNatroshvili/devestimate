@@ -75,6 +75,11 @@ export default function Dashboard() {
     setPage("detail");
   };
 
+  const openRequest = (requestId: string) => {
+    setRequestIdFromUrl(requestId);
+    setPage("requests");
+  };
+
   if (isSupabaseConfigured && authLoading) {
     return <main className="auth-shell"><div className="client-loading">Loading private workspace…</div></main>;
   }
