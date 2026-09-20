@@ -563,8 +563,8 @@ ${budgetNote}
             <div className="request-modal-section-head">
               <span>07</span>
               <div>
-                <h3>AI ვიზუალური მოქაფები</h3>
-                <p>რექუესთის სრული ფუნქციონალი, ტექნოლოგიური სტეკი და AI დასკვნა გარდაიქმნება 4 პრაქტიკულ UI/UX კონცეფციად.</p>
+                <h3>Hybrid UI მოქაფები</h3>
+                <p>სტრუქტურული UI კომპონენტები და ვიზუალური asset layer ერთიანდება 4 პრაქტიკულ UI/UX კონცეფციად.</p>
               </div>
             </div>
 
@@ -602,7 +602,7 @@ ${budgetNote}
                 </div>
                 <div className="request-mockup-progress-meta">
                   <span>{Math.min(mockups.length, 4)} / 4 მოქაფი მზადაა</span>
-                  <span>AI მუშაობს პროექტის სრული მოთხოვნის მიხედვით</span>
+                  <span>Hybrid renderer იყენებს პროექტის სტრუქტურასა და ვიზუალურ asset layer-ს</span>
                 </div>
               </div>
             )}
