@@ -11,6 +11,7 @@ export type StoredProject = {
   hours: number;
   complexity: number;
   value: number;
+  actualHours?: number;
   createdAt: string;
   status: "Analysis" | "Proposal" | "In Progress" | "Completed";
 };
