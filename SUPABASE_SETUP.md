@@ -4,7 +4,7 @@ The client request workflow is now prepared for a real cross-device setup while 
 
 ## 1. Create a Supabase project
 
-Create a Supabase project and copy its Project URL plus the **publishable key** from the project's API Keys / Connect settings. Supabase recommends publishable keys for browser-side clients and Row Level Security for protecting data. citeturn691372search9turn691372search0
+Create a Supabase project and copy its Project URL plus the **publishable key** from the project's API Keys / Connect settings. Supabase recommends publishable keys for browser-side clients and Row Level Security for protecting data.
 
 ## 2. Run the database migration
 
@@ -45,7 +45,7 @@ Then add the Edge Function secret:
 
 OPENAI_API_KEY
 
-The function uses the Responses API with structured JSON output and does not receive the client's contact details. OpenAI documents the Responses API and structured JSON schema output, and the current cost-sensitive GPT-5.6 Luna model is suitable for this high-volume estimation workflow. citeturn771714search2turn771714search0turn608025search0
+The function uses the Responses API with structured JSON output and does not receive the client's contact details. OpenAI documents the Responses API and structured JSON schema output, and the current cost-sensitive GPT-5.6 Luna model is suitable for this high-volume estimation workflow.
 
 ## 6. Public client URL
 
