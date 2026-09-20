@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, AlertTriangle, Check, Code2, CircleGauge, Clock3
 import { useEffect, useState } from "react";
 import { DEFAULT_RATES, loadRates, priceEstimate, PricingRates } from "../lib/pricing";
 import { saveProject } from "../lib/projects";
+import { ProjectTemplate } from "../lib/templates";
 
 type ProjectType = "Web" | "Mobile" | "WordPress" | "Hybrid";
 
@@ -69,7 +70,25 @@ export default function NewProject({ onBack }: { onBack: () => void }) {
   const [submitted, setSubmitted] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [rates, setRates] = useState<PricingRates>(DEFAULT_RATES);
-  useEffect(() => setRates(loadRates()), []);
+  useEffect(() => {
+    setRates(loadRates());
+    try {
+      const raw = localStorage.getItem("devestimate-template-draft");
+      if (!raw) return;
+      const template = JSON.parse(raw) as ProjectTemplate;
+      setType(template.type);
+      setName(template.name);
+      setDescription(template.description);
+      setFeatures(template.features);
+      setAuth(template.flags.includes("Authentication"));
+      setPayments(template.flags.includes("Payments"));
+      setAdmin(template.flags.includes("Admin panel"));
+      setNotifications(template.flags.includes("Notifications"));
+      setApi(template.flags.includes("External API"));
+      setSeo(template.flags.includes("SEO / Analytics"));
+      localStorage.removeItem("devestimate-template-draft");
+    } catch {}
+  }, []);
 
   const addFeature = () => {
     const value = featureInput.trim();
